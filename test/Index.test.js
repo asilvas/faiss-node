@@ -30,7 +30,6 @@ describe('Index', () => {
     });
   });
 
-
   describe('#toBuffer', () => {
     it('new index is same size as old', () => {
       const index = Index.fromFactory(2, 'Flat');
@@ -54,6 +53,28 @@ describe('Index', () => {
     it('metric adheres to initialized value', () => {
       const index = Index.fromFactory(2, 'Flat', MetricType.METRIC_INNER_PRODUCT);
       expect(index.metricType).toBe(MetricType.METRIC_INNER_PRODUCT);
+    });
+  });
+
+  describe('#toIDMap2', () => {
+    it('new index preserves ID\'s', () => {
+      const index = Index.fromFactory(2, 'Flat').toIDMap2();
+      const x = [1, 0, 0, 1];
+      const labels = [100, 200];
+      index.addWithIds(x, labels);
+      const results = index.search([1, 0], 2);
+      expect(results.labels).toEqual(labels);
+    });
+
+    it('supports BigInt labels', () => {
+      const index = Index.fromFactory(2, 'Flat').toIDMap2();
+      const x = [1, 0, 0, 1];
+      const labels = [100n, 200n];
+      index.addWithIds(x, labels);
+      const results = index.search([1, 0], 2);
+      expect(results.labels).toEqual([100, 200]);
+      // TODO: Once search supports BigInt, use this test instead
+      // expect(results.labels).toEqual(labels);
     });
   });
 });
