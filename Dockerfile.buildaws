@@ -15,15 +15,15 @@ RUN npm run build:test
 
 
 FROM public.ecr.aws/lambda/nodejs:18
-COPY faiss-node.tgz ./
-RUN npm init -y && npm i faiss-node.tgz --ignore-scripts && rm faiss-node.tgz
+COPY faiss-napi.tgz ./
+RUN npm init -y && npm i faiss-napi.tgz --ignore-scripts && rm faiss-napi.tgz
 COPY examples/index-aws.js index.js
-COPY --from=build /var/task/build/Release/faiss-node.node node_modules/faiss-node/build/Release/faiss-node.node
-COPY --from=build /var/task/build/Release/libfaiss.a node_modules/faiss-node/build/Release/libfaiss.a
-COPY --from=build /lib64/libgomp.so.1 node_modules/faiss-node/build/Release/libgomp.so.1
-COPY --from=build /lib64/libpthread.so.0 node_modules/faiss-node/build/Release/libpthread.so.0
-COPY --from=build /lib64/libblas.so.3 node_modules/faiss-node/build/Release/libblas.so.3
-COPY --from=build /lib64/liblapack.so.3 node_modules/faiss-node/build/Release/liblapack.so.3
-COPY --from=build /lib64/libgfortran.so.4 node_modules/faiss-node/build/Release/libgfortran.so.4
-COPY --from=build /lib64/libquadmath.so.0 node_modules/faiss-node/build/Release/libquadmath.so.0
+COPY --from=build /var/task/build/Release/faiss-napi.node node_modules/faiss-napi/build/Release/faiss-napi.node
+COPY --from=build /var/task/build/Release/libfaiss.a node_modules/faiss-napi/build/Release/libfaiss.a
+COPY --from=build /lib64/libgomp.so.1 node_modules/faiss-napi/build/Release/libgomp.so.1
+COPY --from=build /lib64/libpthread.so.0 node_modules/faiss-napi/build/Release/libpthread.so.0
+COPY --from=build /lib64/libblas.so.3 node_modules/faiss-napi/build/Release/libblas.so.3
+COPY --from=build /lib64/liblapack.so.3 node_modules/faiss-napi/build/Release/liblapack.so.3
+COPY --from=build /lib64/libgfortran.so.4 node_modules/faiss-napi/build/Release/libgfortran.so.4
+COPY --from=build /lib64/libquadmath.so.0 node_modules/faiss-napi/build/Release/libquadmath.so.0
 RUN node index.js

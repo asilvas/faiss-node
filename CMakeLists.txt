@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.17 FATAL_ERROR)
 cmake_policy(SET CMP0091 NEW)
 cmake_policy(SET CMP0042 NEW)
 
-project(faiss-node LANGUAGES CXX)
+project(faiss-napi LANGUAGES CXX)
 
 if (APPLE)
     find_package(OpenMP)

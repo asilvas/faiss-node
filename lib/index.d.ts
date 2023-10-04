@@ -10,16 +10,16 @@ export interface SearchResult {
 export enum MetricType {
     METRIC_INNER_PRODUCT = 0, ///< maximum inner product search
     METRIC_L2 = 1,            ///< squared L2 search
-    METRIC_L1,                ///< L1 (aka cityblock)
-    METRIC_Linf,              ///< infinity distance
-    METRIC_Lp,                ///< L_p distance, p is given by a faiss::Index
+    METRIC_L1 = 2,            ///< L1 (aka cityblock)
+    METRIC_Linf = 3,          ///< infinity distance
+    METRIC_Lp = 4,            ///< L_p distance, p is given by a faiss::Index
     /// metric_arg
 
     /// some additional metrics defined in scipy.spatial.distance
     METRIC_Canberra = 20,
-    METRIC_BrayCurtis,
-    METRIC_JensenShannon,
-    METRIC_Jaccard, ///< defined as: sum_i(min(a_i, b_i)) / sum_i(max(a_i, b_i))
+    METRIC_BrayCurtis = 21,
+    METRIC_JensenShannon = 22,
+    METRIC_Jaccard = 23,      ///< defined as: sum_i(min(a_i, b_i)) / sum_i(max(a_i, b_i))
     ///< where a_i, b_i > 0
 }
 
@@ -31,20 +31,18 @@ export enum MetricType {
 export class Index {
     constructor(d: number);
     /**
-     * returns the number of verctors currently indexed.
      * @return {numbers} The number of verctors currently indexed.
      */
-    ntotal(): number;
+    get ntotal(): number;
     /**
-     * returns the dimensionality of verctors.
-     * @return {number} The dimensionality of verctors.
+     * @return {number} The dimensionality of vectors.
      */
-    getDimension(): number;
+    get dims(): number;
     /**
      * returns a boolean that indicates whether training is required.
      * @return {number} Whether training is required.
      */
-    isTrained(): boolean;
+    get isTrained(): boolean;
     /**
      * @return {MetricType} The metric of the index.
      */
@@ -118,8 +116,15 @@ export class Index {
      * @param {BigInt[]} ids IDs to read.
      * @return {number} number of IDs removed.
      */
-    removeIds(ids: BigInt[]): number
-
+    removeIds(ids: number[]): number;
+    /**
+     * Reset the index, resulting in a ntotal of 0.
+     */
+    reset(): void;
+    /**
+     * Free all resources associated with the index. Further calls to the index will throw.
+     */
+    dispose(): void;
 }
 
 /**
@@ -134,6 +139,19 @@ export abstract class IndexFlat extends Index {
      * Encoded dataset, size ntotal * codeSize.
      */
     get codes(): Buffer;
+    /**
+     * Return buffer codes for a given byte range.
+     * @param {number} start position to read from (default: 0).
+     * @param {number} end position to read to (default: length).
+     * @return {Buffer} Buffer containing the requested codes by range.
+     */
+    getCodesByRange(start?: number, end?: number): Buffer;
+    /**
+     * Overwrite the codes using a custom buffer.
+     * @param {Buffer} buffer data to replace codes with.
+     * @param {number} start position to write to (default: 0).
+     */
+    setCodesByRange(buffer: Buffer, start?: number);
 }
 
 /**
@@ -230,4 +248,42 @@ export class IndexHNSW extends Index {
      * @param {number} value The value to set.
      */
     set efSearch(value: number);
+}
+
+/**
+ * IndexIVFFlat Index.
+ * Inverted file with stored vectors.
+ * @param {Index} quantizer.
+ * @param {number} d The dimensionality of index.
+ * @param {number} nlist Number of clusters.
+ * @param {number} metric Metric type (defaults to L2).
+ */
+export class IndexIVFFlat extends Index {
+    IndexIVFFlat(quantizer: Index, d: number, nlist: number, metric?: MetricType);
+    /** 
+     * Read index from a file.
+     * @param {string} fname File path to read.
+     * @return {IndexIVFFlat} The index read.
+     */
+    static read(fname: string): IndexIVFFlat;
+    /** 
+     * Read index from buffer.
+     * @param {Buffer} src Buffer to create index from.
+     * @return {IndexIVFFlat} The index read.
+     */
+    static fromBuffer(src: Buffer): IndexIVFFlat;
+    /**
+     * Merge the current index with another IndexIVFFlat instance.
+     * @param {IndexIVFFlat} otherIndex The other IndexIVFFlat instance to merge from.
+     */
+    mergeFrom(otherIndex: IndexIVFFlat): void;
+    /**
+     * Cells to search.
+     */
+    get nprobe(): number;
+    /**
+     * Cells to search.
+     * @param {number} value The value to set.
+     */
+    set nprobe(value: number);
 }

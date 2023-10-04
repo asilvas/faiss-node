@@ -11,7 +11,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node: ['14', '16', '18', '20']
+        node: ['18', '20']
         os: [macos-latest, windows-latest, ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
@@ -23,10 +23,10 @@ jobs:
     - name: NPM Pack
       run: npm pack
     - name: Rename Package
-      run: mv faiss-node-*.tgz faiss-node.tgz
+      run: mv faiss-napi-*.tgz faiss-napi.tgz
     - name: NPM Install
       working-directory: ./test-import
-      run: npm install ../faiss-node.tgz --foreground-scripts
+      run: npm install ../faiss-napi.tgz --foreground-scripts
     - name: Test
       working-directory: ./test-import
       run: npm test

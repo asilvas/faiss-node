@@ -1,17 +1,17 @@
-const { IndexFlatL2 } = require('faiss-node');
+const { IndexFlatL2 } = require('faiss-napi');
 
-exports.handler = async function(event, context) {
+exports.handler = async function (event, context) {
     const dimension = 2;
     const index = new IndexFlatL2(dimension);
 
-    console.log(index.getDimension());
-    console.log(index.isTrained());
-    console.log(index.ntotal());
+    console.log(index.dims);
+    console.log(index.isTrained);
+    console.log(index.ntotal);
     index.add([1, 0]);
     index.add([1, 2]);
     index.add([1, 3]);
     index.add([1, 1]);
-    console.log(index.ntotal());
+    console.log(index.ntotal);
 
     const k = 4;
     const results = index.search([1, 0], k);
