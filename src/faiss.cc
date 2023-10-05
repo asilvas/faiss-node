@@ -9,11 +9,23 @@
 #include <faiss/index_factory.h>
 #include <faiss/MetricType.h>
 #include <faiss/impl/IDSelector.h>
+#include <faiss/IndexHNSW.h>
+#include <faiss/IndexIVFFlat.h>
+#include <faiss/IndexIDMap.h>
 
 using namespace Napi;
 using idx_t = faiss::idx_t;
 
-template <class T, typename Y>
+enum class IndexType
+{
+  Index,
+  IndexFlatL2,
+  IndexFlatIP,
+  IndexHNSW,
+  IndexIVFFlat,
+};
+
+template <class T, typename Y, IndexType IT>
 class IndexBase : public Napi::ObjectWrap<T>
 {
 public:
@@ -21,7 +33,43 @@ public:
   {
     Napi::Env env = info.Env();
 
-    if (info.Length() > 0 && info[0].IsNumber())
+    if constexpr (IT == IndexType::IndexHNSW)
+    { // HNSW constructor
+      if (info.Length() > 0 && info[0].IsNumber())
+      {
+        auto d = info[0].As<Napi::Number>().Uint32Value();
+        auto m = 32;                                // faiss default
+        auto metric = faiss::MetricType::METRIC_L2; // faiss default
+        if (info.Length() > 1 && info[1].IsNumber())
+        {
+          m = info[1].As<Napi::Number>().Uint32Value();
+        }
+        if (info.Length() > 2 && info[2].IsNumber())
+        {
+          metric = static_cast<faiss::MetricType>(info[2].As<Napi::Number>().Uint32Value());
+        }
+        index_ = std::unique_ptr<faiss::IndexHNSW>(new faiss::IndexHNSW(d, m, metric));
+      }
+    }
+    else if constexpr (IT == IndexType::IndexIVFFlat)
+    { // IVFFlat constructor
+      if (info.Length() > 2 && info[0].IsObject() && info[1].IsNumber() && info[2].IsNumber())
+      {
+        Napi::Object quantizer = info[0].As<Napi::Object>();
+        T *quantizerInstance = Napi::ObjectWrap<T>::Unwrap(quantizer);
+
+        auto d = info[1].As<Napi::Number>().Uint32Value();
+        auto nlist = info[2].As<Napi::Number>().Uint32Value();
+        auto metric = faiss::MetricType::METRIC_L2; // faiss default
+        if (info.Length() > 3 && info[3].IsNumber())
+        {
+          metric = static_cast<faiss::MetricType>(info[3].As<Napi::Number>().Uint32Value());
+        }
+
+        index_ = std::unique_ptr<faiss::IndexIVFFlat>(new faiss::IndexIVFFlat(quantizerInstance->index_.get(), d, nlist, metric));
+      }
+    }
+    else if (info.Length() > 0 && info[0].IsNumber())
     {
       auto n = info[0].As<Napi::Number>().Uint32Value();
       index_ = std::unique_ptr<Y>(new Y(n));
@@ -140,9 +188,198 @@ public:
     return instance;
   }
 
-  Napi::Value isTrained(const Napi::CallbackInfo &info)
+  Napi::Value getIsTrained(const Napi::CallbackInfo &info)
   {
-    return Napi::Boolean::New(info.Env(), index_->is_trained);
+    Napi::Env env = info.Env();
+
+    return Napi::Boolean::New(env, index_->is_trained);
+  }
+
+  Napi::Value getNTotal(const Napi::CallbackInfo &info)
+  {
+    Napi::Env env = info.Env();
+
+    return Napi::Number::New(env, index_->ntotal);
+  }
+
+  Napi::Value getDimension(const Napi::CallbackInfo &info)
+  {
+    Napi::Env env = info.Env();
+
+    return Napi::Number::New(env, index_->d);
+  }
+
+  Napi::Value getMetricType(const Napi::CallbackInfo &info)
+  {
+    return Napi::Number::New(info.Env(), index_->metric_type);
+  }
+
+  Napi::Value getMetricArg(const Napi::CallbackInfo &info)
+  {
+    return Napi::Number::New(info.Env(), index_->metric_arg);
+  }
+
+  Napi::Value getCodeSize(const Napi::CallbackInfo &info)
+  {
+    auto index = dynamic_cast<faiss::IndexFlat *>(index_.get());
+    return Napi::Number::New(info.Env(), index->code_size);
+  }
+
+  Napi::Value getCodesUInt8(const Napi::CallbackInfo &info)
+  {
+    Napi::Env env = info.Env();
+
+    auto index = dynamic_cast<faiss::IndexFlat *>(index_.get());
+    return Napi::Buffer<uint8_t>::Copy(env, index->codes.data(), index->codes.size());
+  }
+
+  Napi::Value getCodesByRange(const Napi::CallbackInfo &info)
+  {
+    Napi::Env env = info.Env();
+
+    auto index = dynamic_cast<faiss::IndexFlat *>(index_.get());
+
+    size_t start = 0;
+    size_t end = index->codes.size();
+
+    if (info.Length() >= 1)
+    {
+      start = info[0].As<Napi::Number>().Uint32Value();
+      if (start >= end)
+      {
+        Napi::Error::New(env, "Position must be less than end.").ThrowAsJavaScriptException();
+        return env.Undefined();
+      }
+    }
+    if (info.Length() >= 2)
+    {
+      end = info[1].As<Napi::Number>().Uint32Value();
+      if (end > index->codes.size())
+      {
+        end = index->codes.size();
+      }
+    }
+
+    return Napi::Buffer<uint8_t>::Copy(env, &index->codes.data()[start], end - start);
+  }
+
+  Napi::Value setCodesByRange(const Napi::CallbackInfo &info)
+  {
+    Napi::Env env = info.Env();
+
+    auto index = dynamic_cast<faiss::IndexFlat *>(index_.get());
+
+    size_t start = 0;
+
+    if (info.Length() < 1)
+    {
+      Napi::Error::New(env, "Expected 1 or 2 arguments, but got " + std::to_string(info.Length()) + ".")
+          .ThrowAsJavaScriptException();
+      return env.Undefined();
+    }
+    if (info.Length() >= 2)
+    {
+      start = info[1].As<Napi::Number>().Uint32Value();
+      if (start >= index->codes.size())
+      {
+        Napi::Error::New(env, "Position must be less than end.").ThrowAsJavaScriptException();
+        return env.Undefined();
+      }
+    }
+
+    auto buffer = info[0].As<Napi::Buffer<uint8_t>>();
+    auto length = buffer.Length();
+    if (length + start > index->codes.size())
+    {
+      Napi::Error::New(env, "Buffer size must be less than or equal to the remaining size.").ThrowAsJavaScriptException();
+      return env.Undefined();
+    }
+
+    // write buffer to codes
+    std::memcpy(&index->codes.data()[start], buffer.Data(), length);
+
+    return env.Undefined();
+  }
+
+  Napi::Value getNProbe(const Napi::CallbackInfo &info)
+  {
+    auto index = dynamic_cast<faiss::IndexIVF *>(index_.get());
+    return Napi::Number::New(info.Env(), index->nprobe);
+  }
+
+  Napi::Value setNProbe(const Napi::CallbackInfo &info)
+  {
+    Napi::Env env = info.Env();
+
+    if (info.Length() != 1)
+    {
+      Napi::Error::New(env, "Expected 1 argument, but got " + std::to_string(info.Length()) + ".")
+          .ThrowAsJavaScriptException();
+      return env.Undefined();
+    }
+    if (!info[0].IsNumber())
+    {
+      Napi::TypeError::New(env, "Invalid the first argument type, must be a Number.").ThrowAsJavaScriptException();
+      return env.Undefined();
+    }
+
+    auto index = dynamic_cast<faiss::IndexIVF *>(index_.get());
+    index->nprobe = info[0].As<Napi::Number>().Int32Value();
+    return env.Undefined();
+  }
+
+  Napi::Value getEfConstruction(const Napi::CallbackInfo &info)
+  {
+    auto index = dynamic_cast<faiss::IndexHNSW *>(index_.get());
+    return Napi::Number::New(info.Env(), index->hnsw.efConstruction);
+  }
+
+  Napi::Value setEfConstruction(const Napi::CallbackInfo &info)
+  {
+    Napi::Env env = info.Env();
+
+    if (info.Length() != 1)
+    {
+      Napi::Error::New(env, "Expected 1 argument, but got " + std::to_string(info.Length()) + ".")
+          .ThrowAsJavaScriptException();
+      return env.Undefined();
+    }
+    if (!info[0].IsNumber())
+    {
+      Napi::TypeError::New(env, "Invalid the first argument type, must be a Number.").ThrowAsJavaScriptException();
+      return env.Undefined();
+    }
+
+    auto index = dynamic_cast<faiss::IndexHNSW *>(index_.get());
+    index->hnsw.efConstruction = info[0].As<Napi::Number>().Int32Value();
+    return env.Undefined();
+  }
+
+  Napi::Value getEfSearch(const Napi::CallbackInfo &info)
+  {
+    auto index = dynamic_cast<faiss::IndexHNSW *>(index_.get());
+    return Napi::Number::New(info.Env(), index->hnsw.efSearch);
+  }
+
+  Napi::Value setEfSearch(const Napi::CallbackInfo &info)
+  {
+    Napi::Env env = info.Env();
+
+    if (info.Length() != 1)
+    {
+      Napi::Error::New(env, "Expected 1 argument, but got " + std::to_string(info.Length()) + ".")
+          .ThrowAsJavaScriptException();
+      return env.Undefined();
+    }
+    if (!info[0].IsNumber())
+    {
+      Napi::TypeError::New(env, "Invalid the first argument type, must be a Number.").ThrowAsJavaScriptException();
+      return env.Undefined();
+    }
+
+    auto index = dynamic_cast<faiss::IndexHNSW *>(index_.get());
+    index->hnsw.efSearch = info[0].As<Napi::Number>().Int32Value();
+    return env.Undefined();
   }
 
   Napi::Value add(const Napi::CallbackInfo &info)
@@ -175,18 +412,107 @@ public:
     for (size_t i = 0; i < length; i++)
     {
       Napi::Value val = arr[i];
-      if (!val.IsNumber())
-      {
-        Napi::Error::New(env, "Expected a Number as array item. (at: " + std::to_string(i) + ")")
-            .ThrowAsJavaScriptException();
-        return env.Undefined();
-      }
       xb[i] = val.As<Napi::Number>().FloatValue();
     }
 
     index_->add(dv.quot, xb);
 
     delete[] xb;
+    return env.Undefined();
+  }
+
+  Napi::Value addWithIds(const Napi::CallbackInfo &info)
+  {
+    Napi::Env env = info.Env();
+
+    if (info.Length() != 2)
+    {
+      Napi::Error::New(env, "Expected 2 arguments, but got " + std::to_string(info.Length()) + ".")
+          .ThrowAsJavaScriptException();
+      return env.Undefined();
+    }
+    if (!info[0].IsArray())
+    {
+      Napi::TypeError::New(env, "Invalid the first argument type, must be an Array.").ThrowAsJavaScriptException();
+      return env.Undefined();
+    }
+    if (!info[1].IsArray())
+    {
+      Napi::TypeError::New(env, "Invalid the second argument type, must be an Array.").ThrowAsJavaScriptException();
+      return env.Undefined();
+    }
+
+    Napi::Array arr = info[0].As<Napi::Array>();
+    size_t length = arr.Length();
+    auto dv = std::div(length, index_->d);
+    if (dv.rem != 0)
+    {
+      Napi::Error::New(env, "Invalid the given array length.")
+          .ThrowAsJavaScriptException();
+      return env.Undefined();
+    }
+    Napi::Array labels = info[1].As<Napi::Array>();
+    size_t labelCount = labels.Length();
+    if (labelCount != dv.quot)
+    {
+      Napi::Error::New(env, "Labels array length must match the number of vectors.")
+          .ThrowAsJavaScriptException();
+      return env.Undefined();
+    }
+
+    float *xb = new float[length];
+    for (size_t i = 0; i < length; i++)
+    {
+      Napi::Value val = arr[i];
+      xb[i] = val.As<Napi::Number>().FloatValue();
+    }
+
+    idx_t *xc = new idx_t[labelCount];
+    for (size_t i = 0; i < labelCount; i++)
+    {
+      Napi::Value val = labels[i];
+      if (val.IsNumber())
+      {
+        xc[i] = val.As<Napi::Number>().Int64Value();
+      }
+      else if (val.IsBigInt())
+      {
+        auto lossless = false;
+        xc[i] = val.As<Napi::BigInt>().Int64Value(&lossless);
+      }
+      else
+      {
+        Napi::Error::New(env, "Expected a Number or BigInt as array item. (at: " + std::to_string(i) + ")")
+            .ThrowAsJavaScriptException();
+        return env.Undefined();
+      }
+    }
+
+    index_->add_with_ids(dv.quot, xb, xc);
+
+    delete[] xb;
+    delete[] xc;
+
+    return env.Undefined();
+  }
+
+  Napi::Value reset(const Napi::CallbackInfo &info)
+  {
+    Napi::Env env = info.Env();
+
+    index_->reset();
+
+    return env.Undefined();
+  }
+
+  Napi::Value dispose(const Napi::CallbackInfo &info)
+  {
+    Napi::Env env = info.Env();
+
+    auto idx = index_.release();
+    delete idx;
+    index_ = nullptr;
+
     return env.Undefined();
   }
 
@@ -220,12 +546,6 @@ public:
     for (size_t i = 0; i < length; i++)
     {
       Napi::Value val = arr[i];
-      if (!val.IsNumber())
-      {
-        Napi::Error::New(env, "Expected a Number as array item. (at: " + std::to_string(i) + ")")
-            .ThrowAsJavaScriptException();
-        return env.Undefined();
-      }
       xb[i] = val.As<Napi::Number>().FloatValue();
     }
 
@@ -239,30 +559,26 @@ public:
   {
     Napi::Env env = info.Env();
 
-    if (info.Length() != 2)
-    {
-      Napi::Error::New(env, "Expected 2 arguments, but got " + std::to_string(info.Length()) + ".")
-          .ThrowAsJavaScriptException();
-      return env.Undefined();
-    }
-    if (!info[0].IsArray())
+    uint32_t k = index_->ntotal;
+    if (info.Length() < 1 || !info[0].IsArray())
     {
       Napi::TypeError::New(env, "Invalid the first argument type, must be an Array.").ThrowAsJavaScriptException();
       return env.Undefined();
     }
-    if (!info[1].IsNumber())
+    if (info.Length() == 2)
     {
-      Napi::TypeError::New(env, "Invalid the second argument type, must be a Number.").ThrowAsJavaScriptException();
-      return env.Undefined();
+      if (!info[1].IsNumber())
+      {
+        Napi::TypeError::New(env, "Invalid the second argument type, must be a Number.").ThrowAsJavaScriptException();
+        return env.Undefined();
+      }
+
+      k = info[1].As<Napi::Number>().Uint32Value();
     }
 
-    const uint32_t k = info[1].As<Napi::Number>().Uint32Value();
     if (k > index_->ntotal)
     {
-      Napi::Error::New(env, "Invalid the number of k (cannot be given a value greater than `ntotal`: " +
-                                std::to_string(index_->ntotal) + ").")
-          .ThrowAsJavaScriptException();
-      return env.Undefined();
+      k = index_->ntotal;
     }
 
     Napi::Array arr = info[0].As<Napi::Array>();
@@ -279,12 +595,6 @@ public:
     for (size_t i = 0; i < length; i++)
     {
       Napi::Value val = arr[i];
-      if (!val.IsNumber())
-      {
-        Napi::Error::New(env, "Expected a Number as array item. (at: " + std::to_string(i) + ")")
-            .ThrowAsJavaScriptException();
-        return env.Undefined();
-      }
       xq[i] = val.As<Napi::Number>().FloatValue();
     }
 
@@ -301,7 +611,7 @@ public:
       idx_t label = I[i];
       float distance = D[i];
       arr_distances[i] = Napi::Number::New(env, distance);
-      arr_labels[i] = Napi::Number::New(env, label);
+      arr_labels[i] = Napi::BigInt::New(env, label);
     }
     delete[] I;
     delete[] D;
@@ -310,16 +620,6 @@ public:
     results.Set("distances", arr_distances);
     results.Set("labels", arr_labels);
     return results;
-  }
-
-  Napi::Value ntotal(const Napi::CallbackInfo &info)
-  {
-    return Napi::Number::New(info.Env(), index_->ntotal);
-  }
-
-  Napi::Value getDimension(const Napi::CallbackInfo &info)
-  {
-    return Napi::Number::New(info.Env(), index_->d);
   }
 
   Napi::Value write(const Napi::CallbackInfo &info)
@@ -406,12 +706,6 @@ public:
     for (size_t i = 0; i < length; i++)
     {
       Napi::Value val = arr[i];
-      if (!val.IsNumber())
-      {
-        Napi::Error::New(env, "Expected a Number as array item. (at: " + std::to_string(i) + ")")
-            .ThrowAsJavaScriptException();
-        return env.Undefined();
-      }
       xb[i] = val.As<Napi::Number>().Int64Value();
     }
 
@@ -440,122 +734,34 @@ public:
     return Napi::Buffer<uint8_t>::Copy(env, writer->data.data(), writer->data.size());
   }
 
+  Napi::Value toIDMap2(const Napi::CallbackInfo &info)
+  {
+    Napi::Env env = info.Env();
+
+    if (info.Length() != 0)
+    {
+      Napi::Error::New(env, "Expected 0 arguments, but got " + std::to_string(info.Length()) + ".")
+          .ThrowAsJavaScriptException();
+      return env.Undefined();
+    }
+
+    Napi::Object instance = T::constructor->New({});
+    T *index = Napi::ObjectWrap<T>::Unwrap(instance);
+
+    try
+    {
+      // wrap the new IDMap'd index around the old and leave it to faiss to throw if index not compatible
+      index->index_ = std::unique_ptr<faiss::IndexIDMap2>(new faiss::IndexIDMap2(index_.get()));
+    }
+    catch (const faiss::FaissException &ex)
+    {
+      Napi::Error::New(env, ex.what()).ThrowAsJavaScriptException();
+    }
+
+    return instance;
+  }
+
 protected:
   std::unique_ptr<faiss::Index> index_;
   inline static Napi::FunctionReference *constructor;
 };
-
-// faiss::Index is abstract so IndexFlatL2 is used as fallback
-class Index : public IndexBase<Index, faiss::IndexFlatL2>
-{
-public:
-  using IndexBase::IndexBase;
-
-  static constexpr const char *CLASS_NAME = "Index";
-
-  static Napi::Object Init(Napi::Env env, Napi::Object exports)
-  {
-    // clang-format off
-    auto func = DefineClass(env, CLASS_NAME, {
-      InstanceMethod("ntotal", &Index::ntotal),
-      InstanceMethod("getDimension", &Index::getDimension),
-      InstanceMethod("isTrained", &Index::isTrained),
-      InstanceMethod("add", &Index::add),
-      InstanceMethod("train", &Index::train),
-      InstanceMethod("search", &Index::search),
-      InstanceMethod("write", &Index::write),
-      InstanceMethod("mergeFrom", &Index::mergeFrom),
-      InstanceMethod("removeIds", &Index::removeIds),
-      InstanceMethod("toBuffer", &Index::toBuffer),
-      StaticMethod("read", &Index::read),
-      StaticMethod("fromBuffer", &Index::fromBuffer),
-      StaticMethod("fromFactory", &Index::fromFactory),
-    });
-    // clang-format on
-
-    constructor = new Napi::FunctionReference();
-    *constructor = Napi::Persistent(func);
-
-    exports.Set(CLASS_NAME, func);
-    return exports;
-  }
-};
-
-class IndexFlatL2 : public IndexBase<IndexFlatL2, faiss::IndexFlatL2>
-{
-public:
-  using IndexBase::IndexBase;
-
-  static constexpr const char *CLASS_NAME = "IndexFlatL2";
-
-  static Napi::Object Init(Napi::Env env, Napi::Object exports)
-  {
-    // clang-format off
-    auto func = DefineClass(env, CLASS_NAME, {
-      InstanceMethod("ntotal", &IndexFlatL2::ntotal),
-      InstanceMethod("getDimension", &IndexFlatL2::getDimension),
-      InstanceMethod("isTrained", &IndexFlatL2::isTrained),
-      InstanceMethod("add", &IndexFlatL2::add),
-      InstanceMethod("train", &IndexFlatL2::train),
-      InstanceMethod("search", &IndexFlatL2::search),
-      InstanceMethod("write", &IndexFlatL2::write),
-      InstanceMethod("mergeFrom", &IndexFlatL2::mergeFrom),
-      InstanceMethod("removeIds", &IndexFlatL2::removeIds),
-      InstanceMethod("toBuffer", &IndexFlatL2::toBuffer),
-      StaticMethod("read", &IndexFlatL2::read),
-      StaticMethod("fromBuffer", &IndexFlatL2::fromBuffer),
-    });
-    // clang-format on
-
-    constructor = new Napi::FunctionReference();
-    *constructor = Napi::Persistent(func);
-
-    exports.Set(CLASS_NAME, func);
-    return exports;
-  }
-};
-
-class IndexFlatIP : public IndexBase<IndexFlatIP, faiss::IndexFlatIP>
-{
-public:
-  using IndexBase::IndexBase;
-
-  static constexpr const char *CLASS_NAME = "IndexFlatIP";
-
-  static Napi::Object Init(Napi::Env env, Napi::Object exports)
-  {
-    // clang-format off
-    auto func = DefineClass(env, CLASS_NAME, {
-      InstanceMethod("ntotal", &IndexFlatIP::ntotal),
-      InstanceMethod("getDimension", &IndexFlatIP::getDimension),
-      InstanceMethod("isTrained", &IndexFlatIP::isTrained),
-      InstanceMethod("add", &IndexFlatIP::add),
-      InstanceMethod("train", &IndexFlatIP::train),
-      InstanceMethod("search", &IndexFlatIP::search),
-      InstanceMethod("write", &IndexFlatIP::write),
-      InstanceMethod("mergeFrom", &IndexFlatIP::mergeFrom),
-      InstanceMethod("removeIds", &IndexFlatIP::removeIds),
-      InstanceMethod("toBuffer", &IndexFlatIP::toBuffer),
-      StaticMethod("read", &IndexFlatIP::read),
-      StaticMethod("fromBuffer", &IndexFlatIP::fromBuffer),
-    });
-    // clang-format on
-
-    constructor = new Napi::FunctionReference();
-    *constructor = Napi::Persistent(func);
-
-    exports.Set(CLASS_NAME, func);
-    return exports;
-  }
-};
-
-Napi::Object Init(Napi::Env env, Napi::Object exports)
-{
-  Index::Init(env, exports);
-  IndexFlatL2::Init(env, exports);
-  IndexFlatIP::Init(env, exports);
-
-  return exports;
-}
-
-NODE_API_MODULE(NODE_GYP_MODULE_NAME, Init)

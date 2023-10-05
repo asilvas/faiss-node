@@ -1,4 +1,4 @@
-const { IndexFlatL2 } = require('../lib');
+const { IndexFlatL2 } = require('..');
 
 describe('IndexFlatL2', () => {
     describe('#read', () => {
@@ -16,8 +16,8 @@ describe('IndexFlatL2', () => {
             index.write(fname);
 
             const index_loaded = IndexFlatL2.read(fname);
-            expect(index_loaded.getDimension()).toBe(2);
-            expect(index_loaded.ntotal()).toBe(1);
+            expect(index_loaded.dims).toBe(2);
+            expect(index_loaded.ntotal).toBe(1);
         })
     });
 
@@ -25,22 +25,22 @@ describe('IndexFlatL2', () => {
         const index = new IndexFlatL2(1);
 
         it('returns 0 if the index is just initialized', () => {
-            expect(index.ntotal()).toBe(0);
+            expect(index.ntotal).toBe(0);
         });
 
         it('returns total count', () => {
             index.add([1]);
-            expect(index.ntotal()).toBe(1);
+            expect(index.ntotal).toBe(1);
             index.add([1, 2, 3]);
-            expect(index.ntotal()).toBe(4);
+            expect(index.ntotal).toBe(4);
         });
     });
 
-    describe('#getDimension', () => {
+    describe('#dims', () => {
         const index = new IndexFlatL2(128);
 
         it('returns dimension', () => {
-            expect(index.getDimension()).toBe(128);
+            expect(index.dims).toBe(128);
         });
     });
 
@@ -48,7 +48,7 @@ describe('IndexFlatL2', () => {
         const index = new IndexFlatL2(1);
 
         it('returns true fixed', () => {
-            expect(index.isTrained()).toBe(true);
+            expect(index.isTrained).toBe(true);
         });
     });
 
@@ -62,10 +62,6 @@ describe('IndexFlatL2', () => {
 
         it('throws an error if given a non-Array object', () => {
             expect(() => { index.add('[1, 2, 3]') }).toThrow('Invalid the first argument type, must be an Array.');
-        });
-
-        it('throws an error if the element of given array is not a number', () => {
-            expect(() => { index.add([1, '2']) }).toThrow('Expected a Number as array item. (at: 1)');
         });
 
         it('throws an error if the length of given array is not adhere to the dimension of the index', () => {
@@ -85,9 +81,8 @@ describe('IndexFlatL2', () => {
             index.add([1, 1]);
         });
 
-        it('throws an error if the count of given param is not 2', () => {
-            expect(() => { index.search() }).toThrow('Expected 2 arguments, but got 0.');
-            expect(() => { index.search([], 1, 2) }).toThrow('Expected 2 arguments, but got 3.');
+        it('throws an error if the count of given param is not 1 or 2', () => {
+            expect(() => { index.search() }).toThrow('Invalid the first argument type, must be an Array.');
         });
 
         it('throws an error if given a non-Array object to first argument', () => {
@@ -98,12 +93,12 @@ describe('IndexFlatL2', () => {
             expect(() => { index.search([1, 2, 3], '2') }).toThrow('Invalid the second argument type, must be a Number.');
         });
 
-        it('throws an error if given the number of neighborhoods exceeding the maximum number of elements', () => {
-            expect(() => { index.search([1, 2], 6) }).toThrow('Invalid the number of k (cannot be given a value greater than `ntotal`: 4).');
+        it('returns ntotal results if 2nd argument not provided', () => {
+            expect(index.search([1, 1])).toMatchObject({ distances: [0, 1, 1, 4], labels: [3n, 0n, 1n, 2n] });
         });
 
-        it('throws an error if the element of given array is not a number', () => {
-            expect(() => { index.search([1, '2'], 2) }).toThrow('Expected a Number as array item. (at: 1)');
+        it('never returns more than ntotal results', () => {
+            expect(index.search([1, 1], 6)).toMatchObject({ distances: [0, 1, 1, 4], labels: [3n, 0n, 1n, 2n] });
         });
 
         it('throws an error if the length of given array is not adhere to the dimension of the index', () => {
@@ -113,9 +108,9 @@ describe('IndexFlatL2', () => {
         });
 
         it('returns search results', () => {
-            expect(index.search([1, 0], 1)).toMatchObject({ distances: [0], labels: [0] });
-            expect(index.search([1, 0], 4)).toMatchObject({ distances: [0, 1, 4, 9], labels: [0, 3, 1, 2] });
-            expect(index.search([1, 1], 4)).toMatchObject({ distances: [0, 1, 1, 4], labels: [3, 0, 1, 2] });
+            expect(index.search([1, 0], 1)).toMatchObject({ distances: [0], labels: [0n] });
+            expect(index.search([1, 0], 4)).toMatchObject({ distances: [0, 1, 4, 9], labels: [0n, 3n, 1n, 2n] });
+            expect(index.search([1, 1], 4)).toMatchObject({ distances: [0, 1, 1, 4], labels: [3n, 0n, 1n, 2n] });
         });
     });
 
@@ -143,11 +138,6 @@ describe('IndexFlatL2', () => {
             expect(() => { index2.mergeFrom("string") }).toThrow('Invalid argument type, must be an object.');
         });
 
-        it("throws an error if argument is not an instance of IndexFlatL2", () => {
-            expect(() => { index2.mergeFrom({}) }).toThrow('Invalid argument');
-            expect(() => { index2.mergeFrom({ "foo": "bar" }) }).toThrow('Invalid argument');
-        });
-
         it("throws an error if merging index has different dimensions", () => {
             const index3 = new IndexFlatL2(3);
             expect(() => { index2.mergeFrom(index3) }).toThrow('The merging index must have the same dimension.');
@@ -156,15 +146,15 @@ describe('IndexFlatL2', () => {
         it("returns search results on merged index", () => {
             expect(index2.search([1, 0], 1)).toMatchObject({
                 distances: [0],
-                labels: [0],
+                labels: [0n],
             });
             expect(index2.search([1, 0], 4)).toMatchObject({
                 distances: [0, 1, 4, 9],
-                labels: [0, 3, 1, 2],
+                labels: [0n, 3n, 1n, 2n],
             });
             expect(index2.search([1, 1], 4)).toMatchObject({
                 distances: [0, 1, 1, 4],
-                labels: [3, 0, 1, 2],
+                labels: [3n, 0n, 1n, 2n],
             });
         });
     });
@@ -188,10 +178,6 @@ describe('IndexFlatL2', () => {
             expect(() => { index.removeIds('[1, 2, 3]') }).toThrow('Invalid the first argument type, must be an Array.');
         });
 
-        it('throws an error if the element of given array is not a number', () => {
-            expect(() => { index.removeIds([1, '2']) }).toThrow('Expected a Number as array item. (at: 1)');
-        });
-
         it("returns number of IDs removed", () => {
             expect(index.removeIds([])).toBe(0);
             expect(index.removeIds([0])).toBe(1);
@@ -201,21 +187,84 @@ describe('IndexFlatL2', () => {
         });
 
         it("correctly removed", () => {
-            expect(index.search([1, 1], 1)).toMatchObject({ distances: [0], labels: [1] });
+            expect(index.search([1, 1], 1)).toMatchObject({ distances: [0], labels: [1n] });
             expect(index.removeIds([0])).toBe(1);
-            expect(index.search([1, 1], 1)).toMatchObject({ distances: [0], labels: [0] });
+            expect(index.search([1, 1], 1)).toMatchObject({ distances: [0], labels: [0n] });
         });
 
         it("correctly removed multiple elements", () => {
-            expect(index.search([1, 3], 1)).toMatchObject({ distances: [0], labels: [3] });
+            expect(index.search([1, 3], 1)).toMatchObject({ distances: [0], labels: [3n] });
             expect(index.removeIds([0, 1])).toBe(2);
-            expect(index.search([1, 3], 1)).toMatchObject({ distances: [0], labels: [1] });
+            expect(index.search([1, 3], 1)).toMatchObject({ distances: [0], labels: [1n] });
         });
 
         it("correctly removed partal elements", () => {
-            expect(index.search([1, 3], 1)).toMatchObject({ distances: [0], labels: [3] });
+            expect(index.search([1, 3], 1)).toMatchObject({ distances: [0], labels: [3n] });
             expect(index.removeIds([0, 1, 2, 4, 5])).toBe(3);
-            expect(index.search([1, 3], 1)).toMatchObject({ distances: [0], labels: [0] });
+            expect(index.search([1, 3], 1)).toMatchObject({ distances: [0], labels: [0n] });
+        });
+    });
+
+    describe('#codes', () => {
+        it("returns codeSize", () => {
+            const index = new IndexFlatL2(2);
+            expect(index.codeSize).toBe(8);
+        });
+
+        it("returns codes", () => {
+            const index = new IndexFlatL2(2);
+            const arr = [1, 1, 255, 255];
+            index.add(arr.slice(0, 2));
+            index.add(arr.slice(2, 4));
+            expect(index.codes).toStrictEqual(Buffer.from(Float32Array.from(arr).buffer));
+            index.add([99, 99]);
+            expect(index.codes).toStrictEqual(Buffer.from(Float32Array.from(arr.concat([99, 99])).buffer));
+        });
+
+        it("getCodesByRange defaults is same as codes", () => {
+            const index = new IndexFlatL2(2);
+            const arr = [1, 1, 255, 255];
+            index.add(arr.slice(0, 2));
+            index.add(arr.slice(2, 4));
+            expect(index.getCodesByRange()).toStrictEqual(Buffer.from(Float32Array.from(arr).buffer));
+            index.add([99, 99]);
+            expect(index.getCodesByRange()).toStrictEqual(Buffer.from(Float32Array.from(arr.concat([99, 99])).buffer));
+        });
+
+        it("getCodesByRange to only return 1st vector codes", () => {
+            const index = new IndexFlatL2(2);
+            const arr = [1, 1, 255, 255];
+            index.add(arr.slice(0, 2));
+            index.add(arr.slice(2, 4));
+            expect(index.getCodesByRange(0, 2 * 4)).toStrictEqual(Buffer.from(Float32Array.from(arr.slice(0, 2)).buffer));
+        });
+
+        it("getCodesByRange to only return 2nd vector codes", () => {
+            const index = new IndexFlatL2(2);
+            const arr = [1, 1, 255, 255];
+            index.add(arr.slice(0, 2));
+            index.add(arr.slice(2, 4));
+            expect(index.getCodesByRange(2 * 4)).toStrictEqual(Buffer.from(Float32Array.from(arr.slice(2, 4)).buffer));
+        });
+
+        it("setCodesByRange to replace codes on 1st vector only", () => {
+            const index = new IndexFlatL2(2);
+            const arr = [1, 1, 255, 255];
+            index.add(arr.slice(0, 2));
+            index.add(arr.slice(2, 4));
+            expect(index.getCodesByRange(0, 2 * 4)).toStrictEqual(Buffer.from(Float32Array.from(arr.slice(0, 2)).buffer));
+            index.setCodesByRange(Buffer.from(Float32Array.from(arr.slice(2, 4)).buffer), 0);
+            expect(index.getCodesByRange(0, 2 * 4)).toStrictEqual(Buffer.from(Float32Array.from(arr.slice(2, 4)).buffer));
+        });
+
+        it("setCodesByRange to replace codes on 2nd vector only", () => {
+            const index = new IndexFlatL2(2);
+            const arr = [1, 1, 255, 255];
+            index.add(arr.slice(0, 2));
+            index.add(arr.slice(2, 4));
+            expect(index.getCodesByRange(2 * 4)).toStrictEqual(Buffer.from(Float32Array.from(arr.slice(2, 4)).buffer));
+            index.setCodesByRange(Buffer.from(Float32Array.from(arr.slice(0, 2)).buffer), 2 * 4);
+            expect(index.getCodesByRange(2 * 4)).toStrictEqual(Buffer.from(Float32Array.from(arr.slice(0, 2)).buffer));
         });
     });
 });

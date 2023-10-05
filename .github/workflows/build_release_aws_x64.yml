@@ -23,7 +23,7 @@ jobs:
       - name: NPM Pack
         run: npm pack
       - name: Rename Package
-        run: mv faiss-node-*.tgz faiss-node.tgz
+        run: mv faiss-napi-*.tgz faiss-napi.tgz
       - name: Build & test
         run: docker build -f Dockerfile.buildaws -t faiss-build-aws .
       - name: Get Version
@@ -39,7 +39,7 @@ jobs:
           docker rm -v $tempid
           cd aws && ls -laht
           mkdir nodejs && mv node_modules nodejs/node_modules && ln -s nodejs/node_modules node_modules
-          zip -r --symlinks faiss-node-v${{ steps.version.outputs.VERSION }}-aws-x64.zip .
+          zip -r --symlinks faiss-napi-v${{ steps.version.outputs.VERSION }}-aws-x64.zip .
       - name: Upload to Release
         uses: softprops/action-gh-release@v1
         with:

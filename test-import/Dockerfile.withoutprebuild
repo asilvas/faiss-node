@@ -2,7 +2,7 @@ FROM ubuntu:22.04
 
 WORKDIR /app
 COPY package.json ./
-COPY faiss-node.tgz ./
+COPY faiss-napi.tgz ./
 
 RUN apt update && \
     apt install -y ca-certificates curl gnupg && \
@@ -13,7 +13,7 @@ RUN apt update && \
     echo 'deb [signed-by=/etc/apt/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ jammy main' | tee /etc/apt/sources.list.d/kitware.list && \
     apt update && apt install -y nodejs cmake git build-essential libopenblas-dev patchelf
 
-RUN npm install ./faiss-node.tgz --foreground-scripts
+RUN npm install ./faiss-napi.tgz --foreground-scripts
 COPY . .
 
 CMD [ "node", "index.js" ]

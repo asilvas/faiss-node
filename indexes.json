@@ -1,0 +1,68 @@
+{
+  "instanceMethods": [
+    "getDimension",
+    "getNTotal",
+    "getIsTrained",
+    "getMetricType",
+    "getMetricArg",
+    "add",
+    "addWithIds",
+    "train",
+    "search",
+    "reset",
+    "dispose",
+    "write",
+    "mergeFrom",
+    "removeIds",
+    "toBuffer",
+    "toIDMap2"
+  ],
+  "staticMethods": [
+    "fromBuffer",
+    "read"
+  ],
+  "indexes": [
+    {
+      "className": "Index",
+      "faissClass": "IndexFlatL2",
+      "indexType": "Index",
+      "staticMethods": [
+        "fromFactory"
+      ]
+    },
+    {
+      "className": "IndexFlatL2",
+      "instanceMethods": [
+        "getCodesByRange",
+        "setCodesByRange",
+        "getCodesUInt8",
+        "getCodeSize"
+      ]
+    },
+    {
+      "className": "IndexFlatIP",
+      "instanceMethods": [
+        "getCodesByRange",
+        "setCodesByRange",
+        "getCodesUInt8",
+        "getCodeSize"
+      ]
+    },
+    {
+      "className": "IndexHNSW",
+      "instanceMethods": [
+        "getEfConstruction",
+        "setEfConstruction",
+        "getEfSearch",
+        "setEfSearch"
+      ]
+    },
+    {
+      "className": "IndexIVFFlat",
+      "instanceMethods": [
+        "getNProbe",
+        "setNProbe"
+      ]
+    }
+  ]
+}

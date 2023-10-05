@@ -5,13 +5,13 @@ on:
   push:
     tags:
       - "*"
-
+  
 jobs:
   test:
     strategy:
       fail-fast: false
       matrix:
-        node: ['14', '16', '18', '20']
+        node: ['18', '20']
         platform: [
           {
             distro: '',
@@ -48,7 +48,7 @@ jobs:
     - name: NPM Pack
       run: npm pack
     - name: Rename Package
-      run: mv faiss-node-*.tgz test-import/faiss-node.tgz
+      run: mv faiss-napi-*.tgz test-import/faiss-napi.tgz
     - name: Build docker on node:${{ matrix.node }}${{ matrix.platform.distro }}
       working-directory: ./test-import
       run: docker buildx build --platform ${{ matrix.platform.arch }} -o type=docker -t test-import --build-arg BASE_IMAGE=node:${{ matrix.node }}${{ matrix.platform.distro }} .
