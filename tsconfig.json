@@ -3,6 +3,8 @@
         "entryPoints": [
             "lib/index.d.ts"
         ],
+        "excludeNotDocumented": true,
+        "exclude": "build/**/*.ts",
         "out": "docs"
     }
 }

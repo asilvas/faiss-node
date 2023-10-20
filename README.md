@@ -88,7 +88,7 @@ hnswIndex.train(x);
 hnswIndex.add(x);
 
 // IDMap'd index
-const idIndex = new IndexFlat(2).toIDMap();
+const idIndex = new IndexFlat(2).toIDMap2();
 idIndex.addWithIds([1, 0, 0, 1], [100n, 200n]);
 ```
 
