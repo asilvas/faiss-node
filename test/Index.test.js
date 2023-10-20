@@ -81,6 +81,9 @@ describe('Index', () => {
       const labels = [100n, 200n];
       index.addWithIds(x, labels);
       expect(index.ids).toEqual(labels);
+      index.removeIds([100n]);
+      index.addWithIds([5, 6], [300n]);
+      expect(index.ids).toEqual([200n, 300n]);
     });
   });
 

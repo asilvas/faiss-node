@@ -722,7 +722,21 @@ public:
     for (size_t i = 0; i < length; i++)
     {
       Napi::Value val = arr[i];
-      xb[i] = val.As<Napi::Number>().Int64Value();
+      if (val.IsNumber())
+      {
+        xb[i] = val.As<Napi::Number>().Int64Value();
+      }
+      else if (val.IsBigInt())
+      {
+        auto lossless = false;
+        xb[i] = val.As<Napi::BigInt>().Int64Value(&lossless);
+      }
+      else
+      {
+        Napi::Error::New(env, "Expected a Number or BigInt as array item. (at: " + std::to_string(i) + ")")
+            .ThrowAsJavaScriptException();
+        return env.Undefined();
+      }
     }
 
     size_t num = index_->remove_ids(faiss::IDSelectorArray{length, xb});
