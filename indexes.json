@@ -5,6 +5,7 @@
     "getIsTrained",
     "getMetricType",
     "getMetricArg",
+    "getIds",
     "add",
     "addWithIds",
     "train",

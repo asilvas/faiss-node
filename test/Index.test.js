@@ -74,6 +74,14 @@ describe('Index', () => {
       const results = index.search([1, 0], 2);
       expect(results.labels).toEqual(labels);
     });
+
+    it('can fetch IDs', () => {
+      const index = Index.fromFactory(2, 'Flat').toIDMap2();
+      const x = [1, 2, 3, 4];
+      const labels = [100n, 200n];
+      index.addWithIds(x, labels);
+      expect(index.ids).toEqual(labels);
+    });
   });
 
   describe('#reset', () => {

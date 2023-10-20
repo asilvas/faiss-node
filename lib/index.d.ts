@@ -146,6 +146,10 @@ export abstract class IndexFlat extends Index {
      */
     get codes(): Buffer;
     /**
+     * Vector identifiers, size ntotal.
+     */
+    get ids(): BigInt[];
+    /**
      * Return buffer codes for a given byte range.
      * @param {number} start position to read from (default: 0).
      * @param {number} end position to read to (default: length).
@@ -292,4 +296,8 @@ export class IndexIVFFlat extends Index {
      * @param {number} value The value to set.
      */
     set nprobe(value: number);
+    /**
+     * Vector identifiers, size ntotal.
+     */
+    get ids(): BigInt[];
 }

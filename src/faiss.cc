@@ -301,6 +301,22 @@ public:
     return env.Undefined();
   }
 
+  Napi::Value getIds(const Napi::CallbackInfo &info)
+  {
+    Napi::Env env = info.Env();
+
+    auto index = dynamic_cast<faiss::IndexIDMap *>(index_.get());
+    auto length = index->id_map.size();
+    Napi::Array ids = Napi::Array::New(env, length);
+    auto id_map = index->id_map.data();
+    for (size_t i = 0; i < length; i++)
+    {
+      ids[i] = Napi::BigInt::New(env, id_map[i]);
+    }
+
+    return ids;
+  }
+
   Napi::Value getNProbe(const Napi::CallbackInfo &info)
   {
     auto index = dynamic_cast<faiss::IndexIVF *>(index_.get());
