@@ -58,6 +58,12 @@ export class Index {
      */
     add(x: number[]): void;
     /** 
+     * Add n vectors of dimension d to the index with ID's.
+     * @param {number[]} x Input matrix, size n * d
+     * @param {BigInt[]} ids Vector identifiers
+     */
+    addWithIds(x: number[], ids: BigInt[]): void;
+    /** 
      * Train n vectors of dimension d to the index.
      * Vectors are implicitly assigned labels ntotal .. ntotal + n - 1
      * @param {number[]} x Input matrix, size n * d
@@ -116,7 +122,7 @@ export class Index {
      * @param {BigInt[]} ids IDs to read.
      * @return {number} number of IDs removed.
      */
-    removeIds(ids: number[]): number;
+    removeIds(ids: BigInt[]): number;
     /**
      * Reset the index, resulting in a ntotal of 0.
      */
