@@ -81,9 +81,31 @@ describe('Index', () => {
       const labels = [100n, 200n];
       index.addWithIds(x, labels);
       expect(index.ids).toEqual(labels);
-      index.removeIds([100n]);
+      index.removeIds([index.ids[0]]);
       index.addWithIds([5, 6], [300n]);
       expect(index.ids).toEqual([200n, 300n]);
+      index.removeIds([index.ids[0]]);
+      expect(index.ids).toEqual([300n]);
+    });
+
+    it('reusing same vector key will result in duplicate keys', () => {
+      const index = Index.fromFactory(2, 'Flat').toIDMap2();
+      const x = [1, 2, 3, 4];
+      const labels = [100n, 200n];
+      index.addWithIds(x, labels);
+      expect(index.ids).toEqual(labels);
+      index.addWithIds([5, 6], [100n]);
+      expect(index.ids).toEqual([100n, 200n, 100n]);
+      expect(index.reconstruct(100n)).toEqual([5, 6]); // doesn't re-use old vector
+    });
+
+    it('can reconstruct vectors', () => {
+      const index = Index.fromFactory(2, 'Flat').toIDMap2();
+      const x = [1, 2, 3, 4];
+      const labels = [100n, 200n];
+      index.addWithIds(x, labels);
+      expect(index.reconstruct(100n)).toEqual([1, 2]);
+      expect(index.reconstruct(200n)).toEqual([3, 4]);
     });
   });
 

@@ -10,6 +10,7 @@
     "addWithIds",
     "train",
     "search",
+    "reconstruct",
     "reset",
     "dispose",
     "write",

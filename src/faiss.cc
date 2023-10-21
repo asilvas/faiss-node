@@ -638,6 +638,44 @@ public:
     return results;
   }
 
+  Napi::Value reconstruct(const Napi::CallbackInfo &info)
+  {
+    Napi::Env env = info.Env();
+
+    if (info.Length() != 1)
+    {
+      Napi::Error::New(env, "Expected 1 argument, but got " + std::to_string(info.Length()) + ".")
+          .ThrowAsJavaScriptException();
+      return env.Undefined();
+    }
+
+    idx_t key = -1;
+    if (info[0].IsNumber())
+    {
+      key = info[0].As<Napi::Number>().Int64Value();
+    }
+    else if (info[0].IsBigInt())
+    {
+      auto lossless = false;
+      key = info[0].As<Napi::BigInt>().Int64Value(&lossless);
+    }
+    else
+    {
+      Napi::TypeError::New(env, "Invalid the first argument type, must be a Number or BigInt.").ThrowAsJavaScriptException();
+      return env.Undefined();
+    }
+
+    float *inpArr = new float[index_->d];
+    Napi::Array outArr = Napi::Array::New(env, index_->d);
+    index_->reconstruct(key, inpArr);
+    for (size_t i = 0; i < index_->d; i++)
+    {
+      outArr[i] = Napi::Number::New(env, inpArr[i]);
+    }
+
+    return outArr;
+  }
+
   Napi::Value write(const Napi::CallbackInfo &info)
   {
     Napi::Env env = info.Env();

@@ -80,6 +80,14 @@ export class Index {
      */
     search(x: number[], k: number): SearchResult;
     /** 
+     * Reconstruct desired vector from index. Will throw if not supported
+     * by the index type.
+     *
+     * @param {number|BigInt} key Key of vector to reconstruct.
+     * @return {number[]} Reconstructed vector of length `dims`.
+     */
+    reconstruct(key: number|BigInt): number[];
+    /** 
      * Write index to a file.
      * @param {string} fname File path to write.
      */
