@@ -672,6 +672,7 @@ public:
     {
       outArr[i] = Napi::Number::New(env, inpArr[i]);
     }
+    delete[] inpArr;
 
     return outArr;
   }
