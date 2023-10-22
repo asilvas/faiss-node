@@ -11,6 +11,7 @@
     "train",
     "search",
     "reconstruct",
+    "reconstructBatch",
     "reset",
     "dispose",
     "write",

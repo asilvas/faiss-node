@@ -107,6 +107,14 @@ describe('Index', () => {
       expect(index.reconstruct(100n)).toEqual([1, 2]);
       expect(index.reconstruct(200n)).toEqual([3, 4]);
     });
+
+    it('can reconstructBatch vectors', () => {
+      const index = Index.fromFactory(2, 'Flat').toIDMap2();
+      const x = [1, 2, 3, 4];
+      const labels = [100n, 200n];
+      index.addWithIds(x, labels);
+      expect(index.reconstructBatch(labels)).toEqual(x);
+    });
   });
 
   describe('#reset', () => {

@@ -93,6 +93,7 @@ const vectors = [[1, 0], [0, 1]];
 idIndex.addWithIds(vectors.flat(), [100n, 200n]);
 // reconstruct vectors
 expect(idIndex.reconstruct(idIndex.ids[0])).toEqual(vectors[0]);
+expect(idIndex.reconstructBatch(idIndex.ids)).toEqual(vectors.flat());
 ```
 
 ## License

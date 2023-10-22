@@ -677,6 +677,53 @@ public:
     return outArr;
   }
 
+  Napi::Value reconstructBatch(const Napi::CallbackInfo &info)
+  {
+    Napi::Env env = info.Env();
+
+    if (info.Length() != 1 || !info[0].IsArray())
+    {
+      Napi::Error::New(env, "Expected 1 array argument, but got " + std::to_string(info.Length()) + ".")
+          .ThrowAsJavaScriptException();
+      return env.Undefined();
+    }
+
+    Napi::Array keysArr = info[0].As<Napi::Array>();
+    auto keyCount = keysArr.Length();
+    idx_t *keys = new idx_t[keyCount];
+    for (size_t i = 0; i < keyCount; i++)
+    {
+      Napi::Value val = keysArr[i];
+      if (val.IsNumber())
+      {
+        keys[i] = val.As<Napi::Number>().Int64Value();
+      }
+      else if (val.IsBigInt())
+      {
+        auto lossless = false;
+        keys[i] = val.As<Napi::BigInt>().Int64Value(&lossless);
+      }
+      else
+      {
+        Napi::TypeError::New(env, "Invalid the first argument type, must be a Number or BigInt.").ThrowAsJavaScriptException();
+        return env.Undefined();
+      }
+    }
+
+    auto dimCount = keyCount * index_->d;
+    float *inpArr = new float[dimCount];
+    Napi::Array outArr = Napi::Array::New(env, dimCount);
+    index_->reconstruct_batch(keyCount, keys, inpArr);
+    for (size_t i = 0; i < dimCount; i++)
+    {
+      outArr[i] = Napi::Number::New(env, inpArr[i]);
+    }
+    delete[] keys;
+    delete[] inpArr;
+
+    return outArr;
+  }
+
   Napi::Value write(const Napi::CallbackInfo &info)
   {
     Napi::Env env = info.Env();

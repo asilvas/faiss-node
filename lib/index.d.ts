@@ -88,6 +88,14 @@ export class Index {
      */
     reconstruct(key: number|BigInt): number[];
     /** 
+     * Reconstruct a batch of vectors from index. Will throw if not supported
+     * by the index type.
+     *
+     * @param {(number|BigInt)[]} key Keys of vectors to reconstruct.
+     * @return {number[]} Reconstructed vector of length `dims`.
+     */
+    reconstructBatch(keys: (number|BigInt)[]): number[];
+    /** 
      * Write index to a file.
      * @param {string} fname File path to write.
      */
