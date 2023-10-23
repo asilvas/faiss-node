@@ -1,4 +1,9 @@
 const { IndexFlatL2, IndexIVFFlat } = require('..');
+const { readdirSync, unlinkSync } = require('fs');
+
+afterEach(() => {
+  readdirSync('.').filter((f) => f.startsWith('_tmp')).forEach((f) => unlinkSync(f));
+});
 
 describe('IndexIVFFlat', () => {
   describe('#constructor', () => {
@@ -26,7 +31,7 @@ describe('IndexIVFFlat', () => {
   });
 
   describe('#mergeOnDisk', () => {
-    it('Can merge 1 trained index with N untrained indexes', () => {
+    it('Can merge indexes from disk', () => {
       const quantizer = new IndexFlatL2(2);
       const trained = new IndexIVFFlat(quantizer, 2, 2);
       const x = Array.from({ length: 400 }, () => Math.random());
@@ -36,7 +41,22 @@ describe('IndexIVFFlat', () => {
       trained.write('_tmp.test.trained.ivf');
       trained.addWithIds(x.slice(200), y.slice(100));
       trained.write('_tmp.test.untrained.ivf');
-      IndexIVFFlat.mergeOnDisk('_tmp.test.trained.ivf', ['_tmp.test.untrained.ivf'], '_tmp.test.merged.ivf');
+      IndexIVFFlat.mergeOnDisk(['_tmp.test.trained.ivf', '_tmp.test.untrained.ivf'], '_tmp.test.merged.ivf');
+    });
+
+    it('Can merge indexes from memory', () => {
+      const quantizer = new IndexFlatL2(2);
+      let trained = new IndexIVFFlat(quantizer, 2, 2);
+      const x = Array.from({ length: 400 }, () => Math.random());
+      const y = Array.from({ length: 200 }, (_, i) => i);
+      trained.train(x.slice(0, 200));
+      trained.addWithIds(x.slice(0, 200), y.slice(0, 100));
+      trained.write('_tmp.test.trained.ivf');
+      trained.addWithIds(x.slice(200), y.slice(100));
+      trained.write('_tmp.test.untrained.ivf');
+      trained = IndexIVFFlat.read('_tmp.test.trained.ivf'); // restore checkpoint
+      const untrained = IndexIVFFlat.read('_tmp.test.untrained.ivf');
+      IndexIVFFlat.mergeOnDisk([trained, untrained], '_tmp.test.merged.ivf');
     });
   });
 });

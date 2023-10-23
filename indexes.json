@@ -63,7 +63,10 @@
     {
       "className": "IndexIVFFlat",
       "staticMethods": [
-        "mergeOnDisk"
+        {
+          "name": "mergeOnDisk",
+          "ifndef": "_MSC_VER"
+        }
       ],
       "instanceMethods": [
         "getNProbe",

@@ -104,7 +104,7 @@ trained.addWithIds(x.slice(0, 200), y.slice(0, 100));
 trained.write('trained.ivf');
 trained.addWithIds(x.slice(200), y.slice(100));
 trained.write('untrained.ivf');
-IndexIVFFlat.mergeOnDisk('trained.ivf', ['untrained.ivf'], 'merged.ivf');
+IndexIVFFlat.mergeOnDisk(['trained.ivf', 'untrained.ivf'], 'merged.ivf');
 ```
 
 ## License

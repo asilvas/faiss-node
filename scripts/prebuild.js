@@ -4,21 +4,40 @@ const path = require('path');
 const DATA = require('../indexes.json');
 const PATH = 'src';
 
+function methodToString(methodType, className, methodObj) {
+  const isObject = typeof methodObj === 'object';
+  const methodName = isObject ? methodObj.name : methodObj;
+  let prefix = '';
+  let postfix = '';
+  if (isObject) {
+    if (methodObj.ifndef) {
+      prefix = `#ifndef ${methodObj.ifndef}\n`;
+      postfix = `#endif // ${methodObj.ifndef}\n`;
+    }
+    if (methodObj.ifdef) {
+      prefix = `#ifdef ${methodObj.ifdef}\n`;
+      postfix = `#endif // ${methodObj.ifdef}\n`;
+    }
+  }
+  return `${prefix}      ${methodType}("${methodName}", &${className}::${methodName}),\n${postfix}`;
+}
+
 function getStringFromIndex({ className, faissClass, indexType, instanceMethods = [], staticMethods = [] }) {
   if (!className) throw new Error('className required index prop');
 
   faissClass ||= className;
   indexType ||= className;
 
-  const instanceMethodsStr = DATA.instanceMethods
-    .concat(instanceMethods)
-    .map(method => `InstanceMethod("${method}", &${className}::${method})`)
-    .join(',\n      ')
+  const finalInstanceMethods = DATA.instanceMethods.concat(instanceMethods);
+  const finalStaticMethods = DATA.staticMethods.concat(staticMethods);
+
+  const instanceMethodsStr = finalInstanceMethods
+    .map((method, idx) => methodToString('InstanceMethod', className, method))
+    .join('')
     ;
-  const staticMethodsStr = DATA.staticMethods
-    .concat(staticMethods)
-    .map(method => `StaticMethod("${method}", &${className}::${method})`)
-    .join(',\n      ')
+  const staticMethodsStr = finalStaticMethods
+    .map((method, idx) => methodToString('StaticMethod', className, method))
+    .join('')
     ;
 
   const str = `class ${className} : public IndexBase<${className}, faiss::${faissClass}, IndexType::${indexType}>
@@ -32,9 +51,7 @@ public:
   {
     // clang-format off
     auto func = DefineClass(env, CLASS_NAME, {
-      ${instanceMethodsStr},
-      ${staticMethodsStr},
-    });
+${instanceMethodsStr}${staticMethodsStr}    });
     // clang-format on
 
     constructor = new Napi::FunctionReference();

@@ -58,6 +58,12 @@ export class Index {
      */
     add(x: number[]): void;
     /** 
+     * Add n vectors of dimension d to the index using the provided labels.
+     * @param {number[]} x Input matrix, size n * d
+     * @param {(number|BigInt)[]} y Vector identifiers
+     */
+    addWithIds(x: number[], y: (number|BigInt)[]): void;
+    /** 
      * Add n vectors of dimension d to the index with ID's.
      * @param {number[]} x Input matrix, size n * d
      * @param {BigInt[]} ids Vector identifiers

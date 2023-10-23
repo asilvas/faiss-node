@@ -194,46 +194,59 @@ public:
   {
     Napi::Env env = info.Env();
 
-    if (info.Length() != 3)
+    if (info.Length() != 2)
     {
-      Napi::Error::New(env, "Expected 3 arguments, but got " + std::to_string(info.Length()) + ".")
+      Napi::Error::New(env, "Expected 2 arguments, but got " + std::to_string(info.Length()) + ".")
           .ThrowAsJavaScriptException();
       return env.Undefined();
     }
-    if (!info[0].IsString())
+    if (!info[0].IsArray())
     {
-      Napi::TypeError::New(env, "Invalid the first argument type, must be a string.").ThrowAsJavaScriptException();
+      Napi::TypeError::New(env, "Invalid first argument, must be an array.").ThrowAsJavaScriptException();
       return env.Undefined();
     }
-    if (!info[1].IsArray())
+    if (!info[1].IsString())
     {
-      Napi::TypeError::New(env, "Invalid the second argument type, must be an array.").ThrowAsJavaScriptException();
+      Napi::TypeError::New(env, "Invalid second argument, must be a string.").ThrowAsJavaScriptException();
       return env.Undefined();
     }
-    if (!info[2].IsString())
+    Napi::Array inputArr = info[0].As<Napi::Array>();
+    auto inputArrLength = inputArr.Length();
+    if (inputArrLength < 2)
     {
-      Napi::TypeError::New(env, "Invalid the third argument type, must be a string.").ThrowAsJavaScriptException();
+      Napi::Error::New(env, "Invalid first argument, array must contain at least 2 entries to merge.").ThrowAsJavaScriptException();
       return env.Undefined();
     }
-
-    Napi::Object instance = T::constructor->New({});
-    T *index = Napi::ObjectWrap<T>::Unwrap(instance);
-    std::string trainedFname = info[0].As<Napi::String>().Utf8Value();
-    Napi::Array mergeFnames = info[1].As<Napi::Array>();
-    std::string mergeFname = info[2].As<Napi::String>().Utf8Value();
+    std::string outFname = info[1].As<Napi::String>().Utf8Value();
 
     // trained index
-    auto trainedIndex = faiss::read_index(trainedFname.c_str());
+    faiss::Index *trainedIndex = nullptr;
+    size_t zero = 0;
+    Napi::Value trainedVal = inputArr[zero];
+    if (trainedVal.IsObject())
+    {
+      trainedIndex = Napi::ObjectWrap<T>::Unwrap(trainedVal.As<Napi::Object>())->index_.get();
+    }
+    else
+    {
+      trainedIndex = faiss::read_index(trainedVal.As<Napi::String>().Utf8Value().c_str());
+    }
     auto trainedIVF = faiss::ivflib::extract_index_ivf(trainedIndex);
 
     // merge indexes
     std::vector<const faiss::InvertedLists *> mergeIVFs;
-    auto mergeFnamesLength = mergeFnames.Length();
-    for (size_t i = 0; i < mergeFnamesLength; i++)
+    for (size_t i = 1; i < inputArrLength; i++)
     {
-      Napi::Value val = mergeFnames[i];
-      std::string mergeFname = val.As<Napi::String>().Utf8Value();
-      auto mergeIndex = faiss::read_index(mergeFname.c_str(), faiss::IO_FLAG_MMAP);
+      Napi::Value val = inputArr[i];
+      faiss::Index *mergeIndex = nullptr;
+      if (val.IsObject())
+      {
+        mergeIndex = Napi::ObjectWrap<T>::Unwrap(val.As<Napi::Object>())->index_.get();
+      }
+      else
+      {
+        mergeIndex = faiss::read_index(val.As<Napi::String>().Utf8Value().c_str(), faiss::IO_FLAG_MMAP);
+      }
       auto mergeIVF = faiss::ivflib::extract_index_ivf(mergeIndex);
       mergeIVF->own_invlists = false; // allow IVF to be released without deleting the inverted lists
       mergeIVFs.push_back(mergeIVF->invlists);
@@ -241,14 +254,14 @@ public:
       delete mergeIndex;
     }
 
-    auto invertedLists = new faiss::OnDiskInvertedLists(trainedIVF->nlist, trainedIVF->code_size, mergeFname.c_str());
+    auto invertedLists = new faiss::OnDiskInvertedLists(trainedIVF->nlist, trainedIVF->code_size, outFname.c_str());
     trainedIndex->ntotal = trainedIVF->ntotal = invertedLists->merge_from(mergeIVFs.data(), mergeIVFs.size());
 
     // replace invertedLists in the output index
     trainedIVF->replace_invlists(invertedLists, true);
 
     // release all indexes
-    for (size_t i = 0; i < mergeFnamesLength; i++)
+    for (size_t i = 0; i < mergeIVFs.size(); i++)
     {
       delete mergeIVFs[i];
     }
