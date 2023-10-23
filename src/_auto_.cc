@@ -221,6 +221,7 @@ public:
       InstanceMethod("setNProbe", &IndexIVFFlat::setNProbe),
       StaticMethod("fromBuffer", &IndexIVFFlat::fromBuffer),
       StaticMethod("read", &IndexIVFFlat::read),
+      StaticMethod("mergeOnDisk", &IndexIVFFlat::mergeOnDisk),
     });
     // clang-format on
 

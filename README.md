@@ -88,12 +88,23 @@ hnswIndex.train(x);
 hnswIndex.add(x);
 
 // IDMap'd index
-const idIndex = new IndexFlat(2).toIDMap2();
+const idIndex = new IndexFlatL2(2).toIDMap2();
 const vectors = [[1, 0], [0, 1]];
 idIndex.addWithIds(vectors.flat(), [100n, 200n]);
 // reconstruct vectors
 expect(idIndex.reconstruct(idIndex.ids[0])).toEqual(vectors[0]);
 expect(idIndex.reconstructBatch(idIndex.ids)).toEqual(vectors.flat());
+
+// IVF
+const ivf = new IndexIVFFlat(new IndexFlatL2(2), 2, 2);
+const x = Array.from({ length: 400 }, () => Math.random());
+const y = Array.from({ length: 200 }, (_, i) => i);
+trained.train(x.slice(0, 200));
+trained.addWithIds(x.slice(0, 200), y.slice(0, 100));
+trained.write('trained.ivf');
+trained.addWithIds(x.slice(200), y.slice(100));
+trained.write('untrained.ivf');
+IndexIVFFlat.mergeOnDisk('trained.ivf', ['untrained.ivf'], 'merged.ivf');
 ```
 
 ## License

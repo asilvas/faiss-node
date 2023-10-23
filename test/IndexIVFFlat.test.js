@@ -24,4 +24,19 @@ describe('IndexIVFFlat', () => {
       expect(index.nprobe).toBe(8);
     });
   });
+
+  describe('#mergeOnDisk', () => {
+    it('Can merge 1 trained index with N untrained indexes', () => {
+      const quantizer = new IndexFlatL2(2);
+      const trained = new IndexIVFFlat(quantizer, 2, 2);
+      const x = Array.from({ length: 400 }, () => Math.random());
+      const y = Array.from({ length: 200 }, (_, i) => i);
+      trained.train(x.slice(0, 200));
+      trained.addWithIds(x.slice(0, 200), y.slice(0, 100));
+      trained.write('_tmp.test.trained.ivf');
+      trained.addWithIds(x.slice(200), y.slice(100));
+      trained.write('_tmp.test.untrained.ivf');
+      IndexIVFFlat.mergeOnDisk('_tmp.test.trained.ivf', ['_tmp.test.untrained.ivf'], '_tmp.test.merged.ivf');
+    });
+  });
 });

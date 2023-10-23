@@ -11,7 +11,9 @@
 #include <faiss/impl/IDSelector.h>
 #include <faiss/IndexHNSW.h>
 #include <faiss/IndexIVFFlat.h>
+#include <faiss/IVFlib.h>
 #include <faiss/IndexIDMap.h>
+#include <faiss/invlists/OnDiskInvertedLists.h>
 
 using namespace Napi;
 using idx_t = faiss::idx_t;
@@ -186,6 +188,73 @@ public:
     }
 
     return instance;
+  }
+
+  static Napi::Value mergeOnDisk(const Napi::CallbackInfo &info)
+  {
+    Napi::Env env = info.Env();
+
+    if (info.Length() != 3)
+    {
+      Napi::Error::New(env, "Expected 3 arguments, but got " + std::to_string(info.Length()) + ".")
+          .ThrowAsJavaScriptException();
+      return env.Undefined();
+    }
+    if (!info[0].IsString())
+    {
+      Napi::TypeError::New(env, "Invalid the first argument type, must be a string.").ThrowAsJavaScriptException();
+      return env.Undefined();
+    }
+    if (!info[1].IsArray())
+    {
+      Napi::TypeError::New(env, "Invalid the second argument type, must be an array.").ThrowAsJavaScriptException();
+      return env.Undefined();
+    }
+    if (!info[2].IsString())
+    {
+      Napi::TypeError::New(env, "Invalid the third argument type, must be a string.").ThrowAsJavaScriptException();
+      return env.Undefined();
+    }
+
+    Napi::Object instance = T::constructor->New({});
+    T *index = Napi::ObjectWrap<T>::Unwrap(instance);
+    std::string trainedFname = info[0].As<Napi::String>().Utf8Value();
+    Napi::Array mergeFnames = info[1].As<Napi::Array>();
+    std::string mergeFname = info[2].As<Napi::String>().Utf8Value();
+
+    // trained index
+    auto trainedIndex = faiss::read_index(trainedFname.c_str());
+    auto trainedIVF = faiss::ivflib::extract_index_ivf(trainedIndex);
+
+    // merge indexes
+    std::vector<const faiss::InvertedLists *> mergeIVFs;
+    auto mergeFnamesLength = mergeFnames.Length();
+    for (size_t i = 0; i < mergeFnamesLength; i++)
+    {
+      Napi::Value val = mergeFnames[i];
+      std::string mergeFname = val.As<Napi::String>().Utf8Value();
+      auto mergeIndex = faiss::read_index(mergeFname.c_str(), faiss::IO_FLAG_MMAP);
+      auto mergeIVF = faiss::ivflib::extract_index_ivf(mergeIndex);
+      mergeIVF->own_invlists = false; // allow IVF to be released without deleting the inverted lists
+      mergeIVFs.push_back(mergeIVF->invlists);
+      // delete mergeIVF;
+      delete mergeIndex;
+    }
+
+    auto invertedLists = new faiss::OnDiskInvertedLists(trainedIVF->nlist, trainedIVF->code_size, mergeFname.c_str());
+    trainedIndex->ntotal = trainedIVF->ntotal = invertedLists->merge_from(mergeIVFs.data(), mergeIVFs.size());
+
+    // replace invertedLists in the output index
+    trainedIVF->replace_invlists(invertedLists, true);
+
+    // release all indexes
+    for (size_t i = 0; i < mergeFnamesLength; i++)
+    {
+      delete mergeIVFs[i];
+    }
+    delete trainedIndex;
+
+    return env.Undefined();
   }
 
   Napi::Value getIsTrained(const Napi::CallbackInfo &info)

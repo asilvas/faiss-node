@@ -298,6 +298,13 @@ export class IndexIVFFlat extends Index {
      * @return {IndexIVFFlat} The index read.
      */
     static fromBuffer(src: Buffer): IndexIVFFlat;
+    /** 
+     * Merge trained & untrained IVF indexes on disk.
+     * @param {string} trainedPath Buffer to create index from.
+     * @param {string[]} untrainedPaths Factory descriptor.
+     * @param {string} outputPath Metric type (defaults to L2).
+     */
+    static mergeOnDisk(trainedPath: string, untrainedPaths: string[], outputPath: string): void;
     /**
      * Merge the current index with another IndexIVFFlat instance.
      * @param {IndexIVFFlat} otherIndex The other IndexIVFFlat instance to merge from.
