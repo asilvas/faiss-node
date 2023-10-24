@@ -90,6 +90,9 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
         set(DEPENDANCES_MKL
             libmkl_intel_lp64.so
             libmkl_sequential.so
+            libmkl_avx512.so
+            libmkl_def.so
+            libmkl_avx2.so
             libmkl_core.so)
         foreach(dep ${DEPENDANCES_MKL})
             file(TO_CMAKE_PATH "$ENV{MKLROOT}/lib/intel64/${dep}" MKL_dep)
