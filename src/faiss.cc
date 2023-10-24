@@ -190,6 +190,7 @@ public:
     return instance;
   }
 
+#ifndef _MSC_VER
   static Napi::Value mergeOnDisk(const Napi::CallbackInfo &info)
   {
     Napi::Env env = info.Env();
@@ -223,9 +224,11 @@ public:
     faiss::Index *trainedIndex = nullptr;
     size_t zero = 0;
     Napi::Value trainedVal = inputArr[zero];
+    auto trainedIndexOwned = true;
     if (trainedVal.IsObject())
     {
       trainedIndex = Napi::ObjectWrap<T>::Unwrap(trainedVal.As<Napi::Object>())->index_.get();
+      trainedIndexOwned = false;
     }
     else
     {
@@ -239,9 +242,11 @@ public:
     {
       Napi::Value val = inputArr[i];
       faiss::Index *mergeIndex = nullptr;
+      auto mergeIndexOwned = true;
       if (val.IsObject())
       {
         mergeIndex = Napi::ObjectWrap<T>::Unwrap(val.As<Napi::Object>())->index_.get();
+        mergeIndexOwned = false;
       }
       else
       {
@@ -250,8 +255,11 @@ public:
       auto mergeIVF = faiss::ivflib::extract_index_ivf(mergeIndex);
       mergeIVF->own_invlists = false; // allow IVF to be released without deleting the inverted lists
       mergeIVFs.push_back(mergeIVF->invlists);
-      // delete mergeIVF;
-      delete mergeIndex;
+      if (mergeIndexOwned)
+      {
+        // delete mergeIVF;
+        delete mergeIndex;
+      }
     }
 
     auto invertedLists = new faiss::OnDiskInvertedLists(trainedIVF->nlist, trainedIVF->code_size, outFname.c_str());
@@ -265,10 +273,14 @@ public:
     {
       delete mergeIVFs[i];
     }
-    delete trainedIndex;
+    if (trainedIndexOwned)
+    {
+      delete trainedIndex;
+    }
 
     return env.Undefined();
   }
+#endif // _MSC_VER
 
   Napi::Value getIsTrained(const Napi::CallbackInfo &info)
   {

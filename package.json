@@ -21,7 +21,7 @@
     "build:clean": "cmake-js clean",
     "build:test": "npm run build && npm run test",
     "prebuild": "node scripts/prebuild.js",
-    "prebuild-package": "prebuild --verbose --runtime napi --include-regex \"^(faiss-napi\\.node)|(mkl_sequential\\.2\\.dll)|(faiss\\.lib)|(libfaiss\\.a)|(libmkl_intel_lp64\\.so)|(libmkl_sequential\\.so)|(libmkl_core\\.so)|(libmkl_avx512\\.so)|(libmkl_def\\.so)|(libomp\\.dylib)|(libgomp\\.so\\.1)|(libopenblas\\.so\\.3)|(libopenblas\\.so\\.0)|(libgfortran\\.so\\.5)|(libquadmath\\.so\\.0)$\" --backend cmake-js",
+    "prebuild-package": "prebuild --verbose --runtime napi --include-regex \"^(faiss-napi\\.node)|(mkl_sequential\\.2\\.dll)|(faiss\\.lib)|(libfaiss\\.a)|(libmkl_intel_lp64\\.so)|(libmkl_sequential\\.so)|(libmkl_core\\.so)|(libmkl_avx512\\.so)|(libmkl_def\\.so)|(libmkl_avx2\\.so)|(libomp\\.dylib)|(libgomp\\.so\\.1)|(libopenblas\\.so\\.3)|(libopenblas\\.so\\.0)|(libgfortran\\.so\\.5)|(libquadmath\\.so\\.0)$\" --backend cmake-js",
     "install": "prebuild-install --runtime napi --verbose || (git clone -b v1.7.4 --depth 1 https://github.com/facebookresearch/faiss.git deps/faiss && npm i cmake-js && npm run build)",
     "test": "jest",
     "doc": "typedoc --includeVersion"
