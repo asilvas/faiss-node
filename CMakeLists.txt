@@ -91,6 +91,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
             libmkl_intel_lp64.so
             libmkl_sequential.so
             libmkl_avx512.so
+            libmkl_gnu_thread.so
             libmkl_def.so
             libmkl_avx2.so
             libmkl_core.so)
