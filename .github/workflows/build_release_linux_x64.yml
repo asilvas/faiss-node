@@ -34,6 +34,7 @@ jobs:
         run: npm ci --ignore-scripts
       - name: Build & test
         run: |
+          export LD_PRELOAD=/opt/intel/mkl/lib/intel64/libmkl_def.so:/opt/intel/mkl/lib/intel64/libmkl_avx2.so:/opt/intel/mkl/lib/intel64/libmkl_core.so:/opt/intel/mkl/lib/intel64/libmkl_intel_lp64.so:/opt/intel/mkl/lib/intel64/libmkl_intel_thread.so:/opt/intel/lib/intel64_lin/libiomp5.so:/opt/intel/lib/intel64/libmkl_avx512.so
           npm run build:test
           ls build/Release
       - name: Build Release

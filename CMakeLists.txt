@@ -89,6 +89,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     if(DEFINED ENV{MKLROOT})
         set(DEPENDANCES_MKL
             libmkl_intel_lp64.so
+            libmkl_intel_thread.so
+            libiomp5.so
             libmkl_sequential.so
             libmkl_avx512.so
             libmkl_gnu_thread.so
