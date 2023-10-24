@@ -1,5 +1,6 @@
 const { IndexFlatL2, IndexIVFFlat } = require('..');
 const { readdirSync, unlinkSync } = require('fs');
+const os = require('os');
 
 afterEach(() => {
   readdirSync('.').filter((f) => f.startsWith('_tmp')).forEach((f) => unlinkSync(f));
@@ -32,6 +33,8 @@ describe('IndexIVFFlat', () => {
 
   describe('#mergeOnDisk', () => {
     it('Can merge indexes from disk', () => {
+      if (os.platform() === 'win32') return; // windows doesn't support merging on disk
+
       const quantizer = new IndexFlatL2(2);
       const trained = new IndexIVFFlat(quantizer, 2, 2);
       const x = Array.from({ length: 400 }, () => Math.random());
@@ -45,6 +48,8 @@ describe('IndexIVFFlat', () => {
     });
 
     it('Can merge indexes from memory', () => {
+      if (os.platform() === 'win32') return; // windows doesn't support merging on disk
+
       const quantizer = new IndexFlatL2(2);
       let trained = new IndexIVFFlat(quantizer, 2, 2);
       const x = Array.from({ length: 400 }, () => Math.random());
