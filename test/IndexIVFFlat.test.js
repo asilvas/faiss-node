@@ -34,6 +34,7 @@ describe('IndexIVFFlat', () => {
   describe('#mergeOnDisk', () => {
     it('Can merge indexes from disk', () => {
       if (os.platform() === 'win32') return; // windows doesn't support merging on disk
+      if (process.env.MKL_SKIP) return;
 
       const quantizer = new IndexFlatL2(2);
       const trained = new IndexIVFFlat(quantizer, 2, 2);
@@ -49,6 +50,7 @@ describe('IndexIVFFlat', () => {
 
     it('Can merge indexes from memory', () => {
       if (os.platform() === 'win32') return; // windows doesn't support merging on disk
+      if (process.env.MKL_SKIP) return;
 
       const quantizer = new IndexFlatL2(2);
       let trained = new IndexIVFFlat(quantizer, 2, 2);
