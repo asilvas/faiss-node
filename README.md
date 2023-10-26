@@ -99,12 +99,14 @@ expect(idIndex.reconstructBatch(idIndex.ids)).toEqual(vectors.flat());
 const ivf = new IndexIVFFlat(new IndexFlatL2(2), 2, 2);
 const x = Array.from({ length: 400 }, () => Math.random());
 const y = Array.from({ length: 200 }, (_, i) => i);
+const trained = new IndexIVFFlat(new IndexFlatL2(2), 2, 2);
 trained.train(x.slice(0, 200));
 trained.addWithIds(x.slice(0, 200), y.slice(0, 100));
 trained.write('trained.ivf');
-trained.addWithIds(x.slice(200), y.slice(100));
-trained.write('untrained.ivf');
-IndexIVFFlat.mergeOnDisk(['trained.ivf', 'untrained.ivf'], 'merged.ivf');
+const untrained = new IndexIVFFlat(new IndexFlatL2(2), 2, 2);
+untrained.addWithIds(x.slice(200), y.slice(100));
+untrained.write('untrained.ivf');
+IndexIVFFlat.mergeOnDisk(['trained.ivf', 'untrained.ivf'], 'merged.ivf', 'merged.ivfdata');
 ```
 
 ## License

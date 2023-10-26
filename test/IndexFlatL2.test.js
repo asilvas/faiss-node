@@ -12,7 +12,7 @@ describe('IndexFlatL2', () => {
             const index = new IndexFlatL2(dimension);
             index.add([1, 0]);
 
-            const fname = '_tmp.test.read.index';
+            const fname = '_tmp.read.index';
             index.write(fname);
 
             const index_loaded = IndexFlatL2.read(fname);

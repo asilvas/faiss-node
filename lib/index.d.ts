@@ -306,11 +306,11 @@ export class IndexIVFFlat extends Index {
     static fromBuffer(src: Buffer): IndexIVFFlat;
     /** 
      * Merge trained & untrained IVF indexes on disk.
-     * @param {string} trainedPath Buffer to create index from.
-     * @param {string[]} untrainedPaths Factory descriptor.
-     * @param {string} outputPath Metric type (defaults to L2).
+     * @param {(string|IndexIVFFlat)[]} inputIdxOrPaths IVF indexes (or paths) to merge, with the first being trained.
+     * @param {string} outputIndexPath Path of final merged index file.
+     * @param {string} outputDataPath Path of final merged data file.
      */
-    static mergeOnDisk(trainedPath: string, untrainedPaths: string[], outputPath: string): void;
+    static mergeOnDisk(mergePaths: string[], outputIndexPath: string, outputDataPath: string): void;
     /**
      * Merge the current index with another IndexIVFFlat instance.
      * @param {IndexIVFFlat} otherIndex The other IndexIVFFlat instance to merge from.

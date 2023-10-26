@@ -195,9 +195,9 @@ public:
   {
     Napi::Env env = info.Env();
 
-    if (info.Length() != 2)
+    if (info.Length() != 3)
     {
-      Napi::Error::New(env, "Expected 2 arguments, but got " + std::to_string(info.Length()) + ".")
+      Napi::Error::New(env, "Expected 3 arguments, but got " + std::to_string(info.Length()) + ".")
           .ThrowAsJavaScriptException();
       return env.Undefined();
     }
@@ -211,6 +211,11 @@ public:
       Napi::TypeError::New(env, "Invalid second argument, must be a string.").ThrowAsJavaScriptException();
       return env.Undefined();
     }
+    if (!info[2].IsString())
+    {
+      Napi::TypeError::New(env, "Invalid third argument, must be a string.").ThrowAsJavaScriptException();
+      return env.Undefined();
+    }
     Napi::Array inputArr = info[0].As<Napi::Array>();
     auto inputArrLength = inputArr.Length();
     if (inputArrLength < 2)
@@ -218,64 +223,64 @@ public:
       Napi::Error::New(env, "Invalid first argument, array must contain at least 2 entries to merge.").ThrowAsJavaScriptException();
       return env.Undefined();
     }
-    std::string outFname = info[1].As<Napi::String>().Utf8Value();
+    std::string outIndexFname = info[1].As<Napi::String>().Utf8Value();
+    std::string outDataFname = info[2].As<Napi::String>().Utf8Value();
 
-    // trained index
-    faiss::Index *trainedIndex = nullptr;
-    size_t zero = 0;
-    Napi::Value trainedVal = inputArr[zero];
+    idx_t ntotal = 0;
+    std::vector<const faiss::InvertedLists *> lists;
+    faiss::IndexIVF *trainedIndex = nullptr;
     auto trainedIndexOwned = true;
-    if (trainedVal.IsObject())
-    {
-      trainedIndex = Napi::ObjectWrap<T>::Unwrap(trainedVal.As<Napi::Object>())->index_.get();
-      trainedIndexOwned = false;
-    }
-    else
-    {
-      trainedIndex = faiss::read_index(trainedVal.As<Napi::String>().Utf8Value().c_str());
-    }
-    auto trainedIVF = faiss::ivflib::extract_index_ivf(trainedIndex);
-
-    // merge indexes
-    std::vector<const faiss::InvertedLists *> mergeIVFs;
-    for (size_t i = 1; i < inputArrLength; i++)
+    for (size_t i = 0; i < inputArrLength; i++)
     {
       Napi::Value val = inputArr[i];
-      faiss::Index *mergeIndex = nullptr;
+      faiss::IndexIVF *mergeIndex = nullptr;
       auto mergeIndexOwned = true;
       if (val.IsObject())
       {
-        mergeIndex = Napi::ObjectWrap<T>::Unwrap(val.As<Napi::Object>())->index_.get();
+        mergeIndex = faiss::ivflib::extract_index_ivf(Napi::ObjectWrap<T>::Unwrap(val.As<Napi::Object>())->index_.get());
         mergeIndexOwned = false;
       }
       else
       {
-        mergeIndex = faiss::read_index(val.As<Napi::String>().Utf8Value().c_str(), faiss::IO_FLAG_MMAP);
+        mergeIndex = faiss::ivflib::extract_index_ivf(faiss::read_index(val.As<Napi::String>().Utf8Value().c_str(), faiss::IO_FLAG_MMAP));
       }
-      auto mergeIVF = faiss::ivflib::extract_index_ivf(mergeIndex);
-      mergeIVF->own_invlists = false; // allow IVF to be released without deleting the inverted lists
-      mergeIVFs.push_back(mergeIVF->invlists);
+
+      if (i == 0)
+      { // first index is trained index
+        trainedIndex = mergeIndex;
+        trainedIndexOwned = mergeIndexOwned;
+        mergeIndexOwned = false;
+      }
+
+      mergeIndex->own_invlists = false; // allow IVF to be released without deleting the inverted lists
+      lists.push_back(mergeIndex->invlists);
+      ntotal += mergeIndex->ntotal;
+
       if (mergeIndexOwned)
       {
-        // delete mergeIVF;
         delete mergeIndex;
       }
     }
 
-    auto invertedLists = new faiss::OnDiskInvertedLists(trainedIVF->nlist, trainedIVF->code_size, outFname.c_str());
-    trainedIndex->ntotal = trainedIVF->ntotal = invertedLists->merge_from(mergeIVFs.data(), mergeIVFs.size());
+    auto il = new faiss::OnDiskInvertedLists(trainedIndex->nlist, trainedIndex->code_size, outDataFname.c_str());
+    // this will write the merged index to disk
+    il->merge_from(lists.data(), lists.size(), false);
 
     // replace invertedLists in the output index
-    trainedIVF->replace_invlists(invertedLists, true);
+    trainedIndex->replace_invlists(il, true);
+    trainedIndex->ntotal = ntotal;
 
     // release all indexes
-    for (size_t i = 0; i < mergeIVFs.size(); i++)
-    {
-      delete mergeIVFs[i];
-    }
     if (trainedIndexOwned)
     {
+      // write the trained index to disk using the same filename
+      faiss::write_index(trainedIndex, outIndexFname.c_str());
       delete trainedIndex;
+    }
+
+    for (size_t i = 0; i < lists.size(); i++)
+    {
+      delete lists[i];
     }
 
     return env.Undefined();
