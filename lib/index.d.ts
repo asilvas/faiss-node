@@ -41,6 +41,10 @@ export enum IndexType {
 export class Index {
     constructor(d: number);
     /**
+     * @return {IndexType} The type of index.
+     */
+    get indexType(): IndexType;
+    /**
      * @return {numbers} The number of verctors currently indexed.
      */
     get ntotal(): number;
