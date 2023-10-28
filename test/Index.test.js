@@ -1,4 +1,4 @@
-const { Index, MetricType } = require('..');
+const { Index, MetricType, IndexType } = require('..');
 
 describe('Index', () => {
   describe('#fromFactory', () => {
@@ -27,6 +27,28 @@ describe('Index', () => {
       index.add(x);
 
       expect(index.ntotal).toBe(2);
+    });
+  });
+
+  describe('#indexType', () => {
+    it('IndexFlatIP is of type IndexFlat', () => {
+      const idx = Index.fromFactory(2, 'Flat', MetricType.METRIC_INNER_PRODUCT);
+      expect(idx.indexType).toBe(IndexType.IndexFlat);
+    });
+
+    it('IndexFlatL2 is of type IndexFlat', () => {
+      const idx = Index.fromFactory(2, 'Flat', MetricType.METRIC_L2);
+      expect(idx.indexType).toBe(IndexType.IndexFlat);
+    });
+
+    it('IndexHNSW is of type IndexHNSW', () => {
+      const idx = Index.fromFactory(2, 'HNSW32,Flat', MetricType.METRIC_INNER_PRODUCT);
+      expect(idx.indexType).toBe(IndexType.IndexHNSW);
+    });
+
+    it('IndexIVFFlat is of type IndexIVF', () => {
+      const idx = Index.fromFactory(2, 'IVF2,Flat', MetricType.METRIC_INNER_PRODUCT);
+      expect(idx.indexType).toBe(IndexType.IndexIVF);
     });
   });
 

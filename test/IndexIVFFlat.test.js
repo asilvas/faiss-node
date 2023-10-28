@@ -1,4 +1,4 @@
-const { IndexFlatL2, IndexIVFFlat } = require('..');
+const { Index, IndexFlatL2, IndexIVFFlat } = require('..');
 const { readdirSync, unlinkSync } = require('fs');
 const os = require('os');
 
@@ -36,15 +36,13 @@ describe('IndexIVFFlat', () => {
       if (os.platform() === 'win32') return; // windows doesn't support merging on disk
       if (process.env.MKL_SKIP) return;
 
-      const quantizer = new IndexFlatL2(2);
-      const trained = new IndexIVFFlat(quantizer, 2, 2);
+      const trained = Index.fromFactory(2, 'IVF2,Flat');
       const x = Array.from({ length: 400 }, () => Math.random());
       const y = Array.from({ length: 200 }, (_, i) => i);
       trained.train(x.slice(0, 200));
-      trained.addWithIds(x.slice(0, 200), y.slice(0, 100));
       trained.write('_tmp.trained.ivf');
-      let untrained = new IndexIVFFlat(quantizer, 2, 2);
-      untrained.addWithIds(x.slice(200), y.slice(100));
+      const untrained = IndexIVFFlat.read('_tmp.trained.ivf');
+      untrained.addWithIds(x, y);
       untrained.write('_tmp.block.ivf');
       IndexIVFFlat.mergeOnDisk(['_tmp.trained.ivf', '_tmp.block.ivf'], '_tmp.merged.ivf', '_tmp.merged.ivfdata');
       expect(() => IndexIVFFlat.read('_tmp.merged.ivf')).not.toThrow(); // is valid index check
@@ -55,20 +53,18 @@ describe('IndexIVFFlat', () => {
       if (os.platform() === 'win32') return; // windows doesn't support merging on disk
       if (process.env.MKL_SKIP) return;
 
-      const quantizer = new IndexFlatL2(2);
-      let trained = new IndexIVFFlat(quantizer, 2, 2);
+      let trained = Index.fromFactory(2, 'IVF2,Flat');
       const x = Array.from({ length: 600 }, () => Math.random());
       const y = Array.from({ length: 300 }, (_, i) => i);
       trained.train(x.slice(0, 200));
-      trained.addWithIds(x.slice(0, 200), y.slice(0, 100));
       trained.write('_tmp.trained.ivf');
-      let untrained = new IndexIVFFlat(quantizer, 2, 2);
-      untrained.addWithIds(x.slice(200, 400), y.slice(100, 200));
+      let untrained = IndexIVFFlat.read('_tmp.trained.ivf');
+      untrained.addWithIds(x.slice(0, 400), y.slice(0, 200));
       untrained.write('_tmp.block.ivf');
       IndexIVFFlat.mergeOnDisk(['_tmp.trained.ivf', '_tmp.block.ivf'], '_tmp.merged.ivf', '_tmp.merged.ivfdata');
       expect(() => IndexIVFFlat.read('_tmp.merged.ivf')).not.toThrow();
       expect(IndexIVFFlat.read('_tmp.merged.ivf').ntotal).toBe(200);
-      untrained = new IndexIVFFlat(quantizer, 2, 2);
+      untrained = IndexIVFFlat.read('_tmp.trained.ivf');
       untrained.addWithIds(x.slice(400), y.slice(200));
       untrained.write('_tmp.block2.ivf');
       IndexIVFFlat.mergeOnDisk(['_tmp.trained.ivf', '_tmp.block.ivf', '_tmp.block2.ivf'], '_tmp.merged.ivf', '_tmp.merged.ivfdata');
@@ -80,18 +76,16 @@ describe('IndexIVFFlat', () => {
       if (os.platform() === 'win32') return; // windows doesn't support merging on disk
       if (process.env.MKL_SKIP) return;
 
-      const quantizer = new IndexFlatL2(2);
-      let trained = new IndexIVFFlat(quantizer, 2, 2);
+      const trained = Index.fromFactory(2, 'IVF2,Flat');
       const x = Array.from({ length: 400 }, () => Math.random());
       const y = Array.from({ length: 200 }, (_, i) => i);
-      trained.train(x.slice(0, 200));
-      trained.addWithIds(x.slice(0, 200), y.slice(0, 100));
+      trained.train(x);
       trained.write('_tmp.trained.ivf');
-      expect(trained.ntotal).toBe(100);
-      let untrained = new IndexIVFFlat(quantizer, 2, 2);
-      untrained.addWithIds(x.slice(200), y.slice(100));
+      expect(trained.ntotal).toBe(0);
+      let untrained = IndexIVFFlat.read('_tmp.trained.ivf');
+      untrained.addWithIds(x, y);
       untrained.write('_tmp.block.ivf');
-      expect(untrained.ntotal).toBe(100);
+      expect(untrained.ntotal).toBe(200);
       IndexIVFFlat.mergeOnDisk([trained, untrained], '_tmp.merged.ivf', '_tmp.merged.ivfdata');
       expect(trained.ntotal).toBe(200);
     });
