@@ -23,6 +23,16 @@ export enum MetricType {
     ///< where a_i, b_i > 0
 }
 
+export enum IndexType {
+  Index = 1,
+  IndexFlat = 10,
+  IndexFlatL2 = 11,
+  IndexFlatIP = 12,
+  IndexHNSW = 20,
+  IndexIVF = 30,
+  IndexIVFFlat = 31,
+}
+
 /**
  * Index.
  * Index that stores the full vectors and performs exhaustive search.

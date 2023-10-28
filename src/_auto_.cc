@@ -13,6 +13,7 @@ public:
   {
     // clang-format off
     auto func = DefineClass(env, CLASS_NAME, {
+      InstanceMethod("getIndexType", &Index::getIndexType),
       InstanceMethod("getDimension", &Index::getDimension),
       InstanceMethod("getNTotal", &Index::getNTotal),
       InstanceMethod("getIsTrained", &Index::getIsTrained),
@@ -57,6 +58,7 @@ public:
   {
     // clang-format off
     auto func = DefineClass(env, CLASS_NAME, {
+      InstanceMethod("getIndexType", &IndexFlatL2::getIndexType),
       InstanceMethod("getDimension", &IndexFlatL2::getDimension),
       InstanceMethod("getNTotal", &IndexFlatL2::getNTotal),
       InstanceMethod("getIsTrained", &IndexFlatL2::getIsTrained),
@@ -104,6 +106,7 @@ public:
   {
     // clang-format off
     auto func = DefineClass(env, CLASS_NAME, {
+      InstanceMethod("getIndexType", &IndexFlatIP::getIndexType),
       InstanceMethod("getDimension", &IndexFlatIP::getDimension),
       InstanceMethod("getNTotal", &IndexFlatIP::getNTotal),
       InstanceMethod("getIsTrained", &IndexFlatIP::getIsTrained),
@@ -151,6 +154,7 @@ public:
   {
     // clang-format off
     auto func = DefineClass(env, CLASS_NAME, {
+      InstanceMethod("getIndexType", &IndexHNSW::getIndexType),
       InstanceMethod("getDimension", &IndexHNSW::getDimension),
       InstanceMethod("getNTotal", &IndexHNSW::getNTotal),
       InstanceMethod("getIsTrained", &IndexHNSW::getIsTrained),
@@ -198,6 +202,7 @@ public:
   {
     // clang-format off
     auto func = DefineClass(env, CLASS_NAME, {
+      InstanceMethod("getIndexType", &IndexIVFFlat::getIndexType),
       InstanceMethod("getDimension", &IndexIVFFlat::getDimension),
       InstanceMethod("getNTotal", &IndexIVFFlat::getNTotal),
       InstanceMethod("getIsTrained", &IndexIVFFlat::getIsTrained),

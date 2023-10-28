@@ -20,11 +20,13 @@ using idx_t = faiss::idx_t;
 
 enum class IndexType
 {
-  Index,
-  IndexFlatL2,
-  IndexFlatIP,
-  IndexHNSW,
-  IndexIVFFlat,
+  Index = 1,
+  IndexFlat = 10,
+  IndexFlatL2 = 11,
+  IndexFlatIP = 12,
+  IndexHNSW = 20,
+  IndexIVF = 30,
+  IndexIVFFlat = 31,
 };
 
 template <class T, typename Y, IndexType IT>
@@ -286,6 +288,26 @@ public:
     return env.Undefined();
   }
 #endif // _MSC_VER
+
+  Napi::Value getIndexType(const Napi::CallbackInfo &info)
+  {
+    auto index = index_.get();
+
+    if (dynamic_cast<faiss::IndexFlat *>(index) != nullptr)
+    {
+      return Napi::Number::New(info.Env(), static_cast<uint32_t>(IndexType::IndexFlat));
+    }
+    else if (dynamic_cast<faiss::IndexIVF *>(index) != nullptr)
+    {
+      return Napi::Number::New(info.Env(), static_cast<uint32_t>(IndexType::IndexIVF));
+    }
+    else if (dynamic_cast<faiss::IndexHNSW *>(index) != nullptr)
+    {
+      return Napi::Number::New(info.Env(), static_cast<uint32_t>(IndexType::IndexHNSW));
+    }
+
+    return Napi::Number::New(info.Env(), static_cast<uint32_t>(IndexType::Index));
+  }
 
   Napi::Value getIsTrained(const Napi::CallbackInfo &info)
   {
