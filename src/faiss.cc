@@ -276,8 +276,16 @@ public:
     if (trainedIndexOwned)
     {
       // write the trained index to disk using the same filename
-      faiss::write_index(trainedIndex, outIndexFname.c_str());
-      delete trainedIndex;
+      try
+      {
+        faiss::write_index(trainedIndex, outIndexFname.c_str());
+        delete trainedIndex;
+      }
+      catch (const faiss::FaissException &ex)
+      {
+        delete trainedIndex;
+        Napi::Error::New(env, ex.what()).ThrowAsJavaScriptException();
+      }
     }
 
     for (size_t i = 0; i < lists.size(); i++)
@@ -863,7 +871,14 @@ public:
 
     const std::string fname = info[0].As<Napi::String>().Utf8Value();
 
-    faiss::write_index(index_.get(), fname.c_str());
+    try
+    {
+      faiss::write_index(index_.get(), fname.c_str());
+    }
+    catch (const faiss::FaissException &ex)
+    {
+      Napi::Error::New(env, ex.what()).ThrowAsJavaScriptException();
+    }
 
     return env.Undefined();
   }
@@ -965,7 +980,14 @@ public:
 
     faiss::VectorIOWriter *writer = new faiss::VectorIOWriter();
 
-    faiss::write_index(index_.get(), writer);
+    try
+    {
+      faiss::write_index(index_.get(), writer);
+    }
+    catch (const faiss::FaissException &ex)
+    {
+      Napi::Error::New(env, ex.what()).ThrowAsJavaScriptException();
+    }
 
     // return buffer from IOWriter
     return Napi::Buffer<uint8_t>::Copy(env, writer->data.data(), writer->data.size());
