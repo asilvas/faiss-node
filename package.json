@@ -12,7 +12,9 @@
     "napi_versions": [
       6,
       7,
-      8
+      8,
+      9,
+      10
     ]
   },
   "scripts": {
